@@ -28,6 +28,18 @@ export const MESSAGES = {
   DELETE_SUCCESS: "Worktree deleted successfully!",
   DELETE_DELETING: "Deleting worktree...",
 
+  // Close flow
+  CLOSE_CHECKING: "Checking current worktree...",
+  CLOSE_CONFIRM_TITLE: "Close Current Worktree",
+  CLOSE_WARNING: "This will delete the current worktree and navigate to the main repository.",
+  CLOSE_CLOSING: "Closing worktree...",
+  CLOSE_NOT_IN_WORKTREE:
+    "You are not in a worktree. You must be inside a worktree to use this command.",
+  CLOSE_HAS_UNCOMMITTED_CHANGES:
+    "Worktree has uncommitted changes. Commit or stash your changes before closing.",
+  CLOSE_REQUIRES_SHELL_INTEGRATION:
+    "The close command requires shell integration. Run 'branchlet' and select 'Setup Shell Integration' first.",
+
   // List view
   LIST_TITLE: "Git Worktrees",
   LIST_NO_WORKTREES: "No additional worktrees found.",

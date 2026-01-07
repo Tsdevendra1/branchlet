@@ -31,6 +31,7 @@ export function WelcomeHeader({ mode, gitRoot }: WelcomeHeaderProps) {
       create: "Create",
       list: "List",
       delete: "Delete",
+      close: "Close",
       settings: "Settings",
       setup: "Setup",
     }

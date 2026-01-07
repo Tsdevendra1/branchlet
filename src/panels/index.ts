@@ -1,3 +1,4 @@
+export { CloseWorktree } from "./close/index.js"
 export { CreateWorktree } from "./create/index.js"
 export { DeleteWorktree } from "./delete/index.js"
 export { ListWorktrees } from "./list/index.js"

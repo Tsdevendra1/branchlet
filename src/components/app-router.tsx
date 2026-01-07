@@ -3,6 +3,7 @@ import { useState } from "react"
 import { COLORS } from "../constants/index.js"
 import { BorderContext } from "../contexts/border-context.js"
 import {
+  CloseWorktree,
   CreateWorktree,
   DeleteWorktree,
   ListWorktrees,
@@ -112,6 +113,20 @@ export function AppRouter({
                 onBackToMenu()
               }}
               onCancel={onBackToMenu}
+            />
+          </Box>
+        )}
+
+        {mode === "close" && (
+          <Box borderStyle="round" paddingX={1} borderColor={borderColor}>
+            <CloseWorktree
+              worktreeService={worktreeService}
+              onCancel={onExit}
+              isFromWrapper={isFromWrapper}
+              onCloseComplete={(navigateTo, deleteWorktree) => {
+                process.stdout.write(`${JSON.stringify({ navigateTo, deleteWorktree })}\n`)
+                onExit()
+              }}
             />
           </Box>
         )}

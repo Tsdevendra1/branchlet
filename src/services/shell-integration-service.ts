@@ -196,6 +196,17 @@ ${commandName}() {
     if [ -n "$dir" ]; then
       cd "$dir" && echo "Branchlet: Navigated to $(pwd)"
     fi
+  elif [ "$1" = "close" ]; then
+    local output=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
+    if [ -n "$output" ]; then
+      local navigate_to=$(echo "$output" | grep -o '"navigateTo":"[^"]*"' | cut -d'"' -f4)
+      local delete_wt=$(echo "$output" | grep -o '"deleteWorktree":"[^"]*"' | cut -d'"' -f4)
+      if [ -n "$navigate_to" ] && [ -n "$delete_wt" ]; then
+        cd "$navigate_to" && \\
+        git worktree remove "$delete_wt" && \\
+        echo "Branchlet: Closed worktree and navigated to $(pwd)"
+      fi
+    fi
   else
     command ${commandName} "$@"
   fi

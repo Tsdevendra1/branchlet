@@ -1,6 +1,6 @@
 import type React from "react"
 
-export type AppMode = "menu" | "create" | "list" | "delete" | "settings" | "setup"
+export type AppMode = "menu" | "create" | "list" | "delete" | "settings" | "setup" | "close"
 
 export interface SelectOption<T = string> {
   label: string
@@ -73,4 +73,12 @@ export interface DeleteWorktreeState {
     branchDeleted: boolean
     branchName?: string
   }
+}
+
+export interface CloseWorktreeState {
+  step: "checking" | "confirm" | "closing" | "error"
+  currentWorktreePath?: string
+  mainRepoPath?: string
+  branchName?: string
+  error?: string
 }

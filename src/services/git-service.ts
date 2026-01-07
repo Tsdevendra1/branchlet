@@ -229,6 +229,61 @@ export class GitService {
     return statusResult.success && statusResult.stdout.trim() === ""
   }
 
+  async getCurrentWorktreeInfo(): Promise<{
+    isWorktree: boolean
+    worktreePath: string | null
+    mainRepoPath: string | null
+    branch: string | null
+  }> {
+    // Get the toplevel of current repo
+    const toplevelResult = await executeGitCommand(["rev-parse", "--show-toplevel"], process.cwd())
+    if (!toplevelResult.success) {
+      return { isWorktree: false, worktreePath: null, mainRepoPath: null, branch: null }
+    }
+    const currentPath = toplevelResult.stdout.trim()
+
+    // Get the git common dir (points to main repo's .git)
+    const commonDirResult = await executeGitCommand(
+      ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      process.cwd()
+    )
+    if (!commonDirResult.success) {
+      return { isWorktree: false, worktreePath: null, mainRepoPath: null, branch: null }
+    }
+
+    // Derive main repo path from common dir
+    const gitDir = commonDirResult.stdout.trim()
+    let mainRepoPath: string
+    if (gitDir.endsWith("/.git")) {
+      mainRepoPath = gitDir.slice(0, -5)
+    } else {
+      // Bare repo or other structure
+      mainRepoPath = gitDir.split("/").slice(0, -1).join("/")
+    }
+
+    // Get list of worktrees
+    const worktrees = await this.listWorktrees()
+    const currentWorktree = worktrees.find((wt) => wt.path === currentPath)
+
+    // If current path is the main repo, not a worktree
+    if (currentWorktree?.isMain) {
+      return { isWorktree: false, worktreePath: null, mainRepoPath, branch: null }
+    }
+
+    // Check if we're actually in a linked worktree
+    if (!currentWorktree) {
+      return { isWorktree: false, worktreePath: null, mainRepoPath, branch: null }
+    }
+
+    // We're in a worktree
+    return {
+      isWorktree: true,
+      worktreePath: currentPath,
+      mainRepoPath,
+      branch: currentWorktree?.branch || null,
+    }
+  }
+
   async branchExists(branchName: string): Promise<boolean> {
     const result = await executeGitCommand(
       ["show-ref", "--verify", `refs/heads/${branchName}`],

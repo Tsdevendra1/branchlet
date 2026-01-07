@@ -28,7 +28,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
     process.exit(0)
   }
 
-  const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings"]
+  const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings", "close"]
   let mode: AppMode = "menu"
 
   if (argv.mode && validModes.includes(argv.mode as AppMode)) {
@@ -58,6 +58,7 @@ Commands:
   create     Create a new worktree
   list       List all worktrees
   delete     Delete a worktree
+  close      Close current worktree and return to main repo
   settings   Manage configuration
   (no command) Start interactive menu
 
