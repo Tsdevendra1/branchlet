@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { join, relative } from "node:path"
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
 import {
@@ -24,6 +26,8 @@ interface CreateWorktreeProps {
   onCancel: () => void
   isFromWrapper?: boolean
   quickCreateName?: string | undefined
+  originalCwd?: string | undefined
+  gitRoot?: string | undefined
   onPathSelect?: (path: string) => void
 }
 
@@ -35,12 +39,29 @@ function applyBranchPrefix(branchName: string, prefix: string): string {
   return `${prefix}${branchName}`
 }
 
+// Calculate target path preserving subdirectory position
+function getTargetPath(worktreePath: string, gitRoot: string | undefined, originalCwd: string | undefined): string {
+  if (!gitRoot || !originalCwd) {
+    return worktreePath
+  }
+  const relativePath = relative(gitRoot, originalCwd)
+  // If relative path is empty or goes outside git root, just use worktree path
+  if (!relativePath || relativePath.startsWith("..")) {
+    return worktreePath
+  }
+  const targetPath = join(worktreePath, relativePath)
+  // Only use target path if it exists in the new worktree
+  return existsSync(targetPath) ? targetPath : worktreePath
+}
+
 export function CreateWorktree({
   worktreeService,
   onComplete,
   onCancel,
   isFromWrapper = false,
   quickCreateName,
+  originalCwd,
+  gitRoot: gitRootProp,
   onPathSelect,
 }: CreateWorktreeProps) {
   const [state, setState] = useState<CreateWorktreeState>({
@@ -188,7 +209,7 @@ export function CreateWorktree({
 
         setTimeout(() => {
           if (isFromWrapper && onPathSelect) {
-            onPathSelect(worktreePath)
+            onPathSelect(getTargetPath(worktreePath, gitRootProp || gitRoot, originalCwd))
           } else {
             onComplete()
           }
@@ -203,7 +224,7 @@ export function CreateWorktree({
     }
 
     triggerQuickCreate()
-  }, [quickCreateName, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete])
+  }, [quickCreateName, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete, gitRootProp, originalCwd])
 
   useInput((input, key) => {
     if (state.error) {
@@ -336,7 +357,7 @@ export function CreateWorktree({
 
       setTimeout(() => {
         if (isFromWrapper && onPathSelect) {
-          onPathSelect(worktreePath)
+          onPathSelect(getTargetPath(worktreePath, gitRootProp || gitRoot, originalCwd))
         } else {
           onComplete()
         }

@@ -7,6 +7,7 @@ import { MESSAGES } from "./constants/index.js"
 import type { AppMode } from "./types/index.js"
 
 const VERSION = packageJson.version
+const ORIGINAL_CWD = process.cwd()
 
 function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean } {
   const argv = minimist(process.argv.slice(2), {
@@ -149,6 +150,7 @@ function main(): void {
       quickCreateName={quickCreateName}
       prefixArg={prefixArg}
       clearPrefix={clearPrefix}
+      originalCwd={ORIGINAL_CWD}
       onExit={() => {
         if (!hasExited) {
           hasExited = true

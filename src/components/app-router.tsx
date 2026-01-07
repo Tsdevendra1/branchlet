@@ -27,6 +27,7 @@ interface AppRouterProps {
   quickCreateName?: string | undefined
   prefixArg?: string | undefined
   clearPrefix?: boolean | undefined
+  originalCwd?: string | undefined
   onMenuSelect: (value: AppMode | "exit", selectedIndex?: number) => void
   onBackToMenu: () => void
   onExit: () => void
@@ -43,6 +44,7 @@ export function AppRouter({
   quickCreateName,
   prefixArg,
   clearPrefix,
+  originalCwd,
   onMenuSelect,
   onBackToMenu,
   onExit,
@@ -74,6 +76,8 @@ export function AppRouter({
               onCancel={onBackToMenu}
               isFromWrapper={isFromWrapper}
               quickCreateName={quickCreateName}
+              originalCwd={originalCwd}
+              gitRoot={gitRoot}
               onPathSelect={(path) => {
                 process.stdout.write(`${path}\n`)
                 onExit()
