@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
 import { InputPrompt, StatusIndicator } from "../../components/common/index.js"
-import { COLORS, LOCAL_CONFIG_FILE_NAME } from "../../constants/index.js"
+import { COLORS, GLOBAL_CONFIG_FILE } from "../../constants/index.js"
 import type { WorktreeService } from "../../services/index.js"
 
 interface PrefixPanelProps {
@@ -38,9 +38,8 @@ export function PrefixPanel({
       const config = configService.getConfig()
       const updatedConfig = { ...config, branchPrefix: prefix }
 
-      // Save to local config
-      const localConfigPath = `${process.cwd()}/${LOCAL_CONFIG_FILE_NAME}`
-      await configService.saveConfig(updatedConfig, localConfigPath)
+      // Save to global config (personal, not git-tracked)
+      await configService.saveConfig(updatedConfig, GLOBAL_CONFIG_FILE)
 
       if (prefix) {
         setMessage(`Branch prefix set to "${prefix}"`)
@@ -139,7 +138,7 @@ export function PrefixPanel({
       <Box flexDirection="column">
         <StatusIndicator status="success" message={message} spinner={false} />
         <Box marginTop={1}>
-          <Text color={COLORS.MUTED}>Saved to {LOCAL_CONFIG_FILE_NAME}</Text>
+          <Text color={COLORS.MUTED}>Saved to ~/.branchlet/settings.json</Text>
         </Box>
         <Box marginTop={1}>
           <Text color={COLORS.MUTED}>Press any key to exit...</Text>
