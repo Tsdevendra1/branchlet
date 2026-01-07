@@ -22,9 +22,17 @@ interface CreateWorktreeProps {
   worktreeService: WorktreeService
   onComplete: () => void
   onCancel: () => void
+  isFromWrapper?: boolean
+  onPathSelect?: (path: string) => void
 }
 
-export function CreateWorktree({ worktreeService, onComplete, onCancel }: CreateWorktreeProps) {
+export function CreateWorktree({
+  worktreeService,
+  onComplete,
+  onCancel,
+  isFromWrapper = false,
+  onPathSelect,
+}: CreateWorktreeProps) {
   const [state, setState] = useState<CreateWorktreeState>({
     step: "directory",
     directoryName: "",
@@ -173,7 +181,11 @@ export function CreateWorktree({ worktreeService, onComplete, onCancel }: Create
       setState((prev) => ({ ...prev, step: "success" }))
 
       setTimeout(() => {
-        onComplete()
+        if (isFromWrapper && onPathSelect) {
+          onPathSelect(worktreePath)
+        } else {
+          onComplete()
+        }
       }, 2000)
     } catch (error) {
       setState((prev) => ({

@@ -134,8 +134,8 @@ export function SetupShellIntegration({
             >
               <Text color={COLORS.MUTED} dimColor>
                 {`${commandName}() {
-  if [ $# -eq 0 ]; then
-    local dir=$(FORCE_COLOR=3 command ${commandName} --from-wrapper)
+  if [ $# -eq 0 ] || [ "$1" = "create" ]; then
+    local dir=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
     if [ -n "$dir" ]; then
       cd "$dir" && echo "Branchlet: Navigated to $(pwd)"
     fi

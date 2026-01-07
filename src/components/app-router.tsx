@@ -64,6 +64,11 @@ export function AppRouter({
               worktreeService={worktreeService}
               onComplete={onBackToMenu}
               onCancel={onBackToMenu}
+              isFromWrapper={isFromWrapper}
+              onPathSelect={(path) => {
+                process.stdout.write(`${path}\n`)
+                onExit()
+              }}
             />
           </Box>
         )}
