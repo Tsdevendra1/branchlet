@@ -23,6 +23,7 @@ interface CreateWorktreeProps {
   onComplete: () => void
   onCancel: () => void
   isFromWrapper?: boolean
+  quickCreateName?: string | undefined
   onPathSelect?: (path: string) => void
 }
 
@@ -31,6 +32,7 @@ export function CreateWorktree({
   onComplete,
   onCancel,
   isFromWrapper = false,
+  quickCreateName,
   onPathSelect,
 }: CreateWorktreeProps) {
   const [state, setState] = useState<CreateWorktreeState>({
@@ -63,6 +65,133 @@ export function CreateWorktree({
   useEffect(() => {
     loadBranches()
   }, [loadBranches])
+
+  // Handle quick create mode when quickCreateName is provided
+  useEffect(() => {
+    if (!quickCreateName || branches.length === 0 || loading) {
+      return
+    }
+
+    // Validate directory name
+    const dirError = validateDirectoryName(quickCreateName)
+    if (dirError) {
+      setState((prev) => ({
+        ...prev,
+        error: `Invalid name: ${dirError}`,
+      }))
+      return
+    }
+
+    // Validate branch name
+    const branchError = validateBranchName(quickCreateName)
+    if (branchError) {
+      setState((prev) => ({
+        ...prev,
+        error: `Invalid branch name: ${branchError}`,
+      }))
+      return
+    }
+
+    // Check if branch already exists
+    const existingBranch = branches.find((b) => b.name === quickCreateName)
+    if (existingBranch) {
+      setState((prev) => ({
+        ...prev,
+        error: `Branch '${quickCreateName}' already exists`,
+      }))
+      return
+    }
+
+    // Get current branch as source
+    const currentBranch = branches.find((b) => b.isCurrent)
+    if (!currentBranch) {
+      setState((prev) => ({
+        ...prev,
+        error: "Could not determine current branch",
+      }))
+      return
+    }
+
+    // Set state for quick create and trigger creation
+    setState({
+      step: "directory",
+      directoryName: quickCreateName,
+      sourceBranch: currentBranch.name,
+      newBranch: quickCreateName,
+    })
+
+    // Trigger creation asynchronously
+    const triggerQuickCreate = async () => {
+      try {
+        setState((prev) => ({ ...prev, step: "creating" }))
+
+        const config = worktreeService.getConfigService().getConfig()
+        const gitRoot = repoPath || getRepositoryRoot()
+        const worktreePath = getWorktreePath(gitRoot, quickCreateName, config.worktreePathTemplate)
+        const parentDir = worktreePath.replace(`/${quickCreateName}`, "")
+
+        const gitService = worktreeService.getGitService()
+        await gitService.createWorktree({
+          name: quickCreateName,
+          sourceBranch: currentBranch.name,
+          newBranch: quickCreateName,
+          basePath: parentDir,
+        })
+
+        if (config.worktreeCopyPatterns.length > 0) {
+          await copyFiles(gitRoot, worktreePath, config)
+        }
+
+        if (config.postCreateCmd.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            step: "running-commands",
+            commandProgress: { current: 0, total: config.postCreateCmd.length },
+            postCreateCommands: config.postCreateCmd,
+            currentCommandIndex: 0,
+          }))
+
+          const variables = {
+            BASE_PATH: gitRoot.split("/").pop() || "",
+            WORKTREE_PATH: worktreePath,
+            BRANCH_NAME: quickCreateName,
+            SOURCE_BRANCH: currentBranch.name,
+          }
+
+          await executePostCreateCommands(config.postCreateCmd, variables, (command, current, total) => {
+            setState((prev) => ({
+              ...prev,
+              currentCommand: command,
+              commandProgress: { current, total },
+              currentCommandIndex: current - 1,
+            }))
+          })
+        }
+
+        if (config.terminalCommand) {
+          await openTerminal(config.terminalCommand, worktreePath)
+        }
+
+        setState((prev) => ({ ...prev, step: "success" }))
+
+        setTimeout(() => {
+          if (isFromWrapper && onPathSelect) {
+            onPathSelect(worktreePath)
+          } else {
+            onComplete()
+          }
+        }, 2000)
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : String(error),
+          step: "directory",
+        }))
+      }
+    }
+
+    triggerQuickCreate()
+  }, [quickCreateName, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete])
 
   useInput((input, key) => {
     if (state.error) {

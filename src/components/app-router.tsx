@@ -23,6 +23,7 @@ interface AppRouterProps {
   gitRoot?: string | undefined
   shellIntegrationStatus: ShellIntegrationStatus | null
   isFromWrapper: boolean
+  quickCreateName?: string | undefined
   onMenuSelect: (value: AppMode | "exit", selectedIndex?: number) => void
   onBackToMenu: () => void
   onExit: () => void
@@ -36,6 +37,7 @@ export function AppRouter({
   gitRoot,
   shellIntegrationStatus,
   isFromWrapper,
+  quickCreateName,
   onMenuSelect,
   onBackToMenu,
   onExit,
@@ -66,6 +68,7 @@ export function AppRouter({
               onComplete={onBackToMenu}
               onCancel={onBackToMenu}
               isFromWrapper={isFromWrapper}
+              quickCreateName={quickCreateName}
               onPathSelect={(path) => {
                 process.stdout.write(`${path}\n`)
                 onExit()

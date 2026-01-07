@@ -14,10 +14,11 @@ import { LoadingState } from "./loading-state.js"
 interface AppProps {
   initialMode?: AppMode
   isFromWrapper?: boolean
+  quickCreateName?: string | undefined
   onExit?: () => void
 }
 
-export function App({ initialMode = "menu", isFromWrapper = false, onExit }: AppProps) {
+export function App({ initialMode = "menu", isFromWrapper = false, quickCreateName, onExit }: AppProps) {
   const [mode, setMode] = useState<AppMode>(initialMode)
   const [worktreeService, setWorktreeService] = useState<WorktreeService | null>(null)
   const [error, setError] = useState<string>()
@@ -149,6 +150,7 @@ export function App({ initialMode = "menu", isFromWrapper = false, onExit }: App
       gitRoot={gitRoot}
       shellIntegrationStatus={shellIntegrationStatus}
       isFromWrapper={isFromWrapper}
+      quickCreateName={quickCreateName}
       onMenuSelect={handleMenuSelect}
       onBackToMenu={handleBackToMenu}
       onExit={handleExit}

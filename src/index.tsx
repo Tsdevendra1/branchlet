@@ -8,7 +8,7 @@ import type { AppMode } from "./types/index.js"
 
 const VERSION = packageJson.version
 
-function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean } {
+function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined } {
   const argv = minimist(process.argv.slice(2), {
     string: ["mode"],
     boolean: ["help", "version", "from-wrapper"],
@@ -30,6 +30,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
 
   const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings", "close"]
   let mode: AppMode = "menu"
+  let quickCreateName: string | undefined
 
   if (argv.mode && validModes.includes(argv.mode as AppMode)) {
     mode = argv.mode as AppMode
@@ -40,11 +41,16 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
     if (validModes.includes(command as AppMode)) {
       mode = command as AppMode
     }
+
+    // If mode is "create" and there's a second positional arg, use it as quick create name
+    if (mode === "create" && argv._.length > 1) {
+      quickCreateName = String(argv._[1])
+    }
   }
 
   const isFromWrapper = argv["from-wrapper"] === true
 
-  return { mode, help: false, isFromWrapper }
+  return { mode, help: false, isFromWrapper, quickCreateName }
 }
 
 function showHelp(): void {
@@ -55,12 +61,12 @@ Usage:
   branchlet [command] [options]
 
 Commands:
-  create     Create a new worktree
-  list       List all worktrees
-  delete     Delete a worktree
-  close      Close current worktree and return to main repo
-  settings   Manage configuration
-  (no command) Start interactive menu
+  create [name]  Create a new worktree (interactive if no name given)
+  list           List all worktrees
+  delete         Delete a worktree
+  close          Close current worktree and return to main repo
+  settings       Manage configuration
+  (no command)   Start interactive menu
 
 Options:
   -h, --help     Show this help message
@@ -69,12 +75,13 @@ Options:
   --from-wrapper Called from shell wrapper (outputs path to stdout)
 
 Examples:
-  branchlet                # Start interactive menu
-  branchlet create         # Go directly to create worktree flow
-  branchlet list           # List all worktrees
-  branchlet --from-wrapper # Used by shell wrapper to enable directory switching
-  branchlet delete         # Go directly to delete worktree flow
-  branchlet settings       # Open settings menu
+  branchlet                    # Start interactive menu
+  branchlet create             # Go directly to create worktree flow
+  branchlet create feature-x   # Quick create worktree with name 'feature-x'
+  branchlet list               # List all worktrees
+  branchlet --from-wrapper     # Used by shell wrapper to enable directory switching
+  branchlet delete             # Go directly to delete worktree flow
+  branchlet settings           # Open settings menu
 
 Shell Integration:
   Run 'branchlet' and select "Setup Shell Integration" to enable quick directory switching.
@@ -90,7 +97,7 @@ For more information, visit: https://github.com/raghavpillai/git-worktree-manage
 }
 
 function main(): void {
-  const { mode, help, isFromWrapper } = parseArguments()
+  const { mode, help, isFromWrapper, quickCreateName } = parseArguments()
 
   if (help) {
     showHelp()
@@ -124,6 +131,7 @@ function main(): void {
     <App
       initialMode={mode}
       isFromWrapper={isFromWrapper}
+      quickCreateName={quickCreateName}
       onExit={() => {
         if (!hasExited) {
           hasExited = true
