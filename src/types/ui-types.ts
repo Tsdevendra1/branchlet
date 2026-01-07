@@ -1,6 +1,6 @@
 import type React from "react"
 
-export type AppMode = "menu" | "create" | "list" | "delete" | "settings" | "setup" | "close"
+export type AppMode = "menu" | "create" | "list" | "delete" | "settings" | "setup" | "close" | "prefix"
 
 export interface SelectOption<T = string> {
   label: string

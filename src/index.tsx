@@ -8,10 +8,10 @@ import type { AppMode } from "./types/index.js"
 
 const VERSION = packageJson.version
 
-function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined } {
+function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean } {
   const argv = minimist(process.argv.slice(2), {
     string: ["mode"],
-    boolean: ["help", "version", "from-wrapper"],
+    boolean: ["help", "version", "from-wrapper", "clear"],
     alias: {
       h: "help",
       v: "version",
@@ -28,9 +28,11 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
     process.exit(0)
   }
 
-  const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings", "close"]
+  const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings", "close", "prefix"]
   let mode: AppMode = "menu"
   let quickCreateName: string | undefined
+  let prefixArg: string | undefined
+  let clearPrefix: boolean = false
 
   if (argv.mode && validModes.includes(argv.mode as AppMode)) {
     mode = argv.mode as AppMode
@@ -46,11 +48,21 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
     if (mode === "create" && argv._.length > 1) {
       quickCreateName = String(argv._[1])
     }
+
+    // If mode is "prefix" and there's a second positional arg, use it as prefix value
+    if (mode === "prefix" && argv._.length > 1) {
+      prefixArg = String(argv._[1])
+    }
+  }
+
+  // Handle --clear flag for prefix command
+  if (mode === "prefix" && argv.clear === true) {
+    clearPrefix = true
   }
 
   const isFromWrapper = argv["from-wrapper"] === true
 
-  return { mode, help: false, isFromWrapper, quickCreateName }
+  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix }
 }
 
 function showHelp(): void {
@@ -65,6 +77,7 @@ Commands:
   list           List all worktrees
   delete         Delete a worktree
   close          Close current worktree and return to main repo
+  prefix [name]  Set branch prefix (e.g., 'john' creates 'john/' prefix)
   settings       Manage configuration
   (no command)   Start interactive menu
 
@@ -79,6 +92,8 @@ Examples:
   branchlet create             # Go directly to create worktree flow
   branchlet create feature-x   # Quick create worktree with name 'feature-x'
   branchlet list               # List all worktrees
+  branchlet prefix john        # Set branch prefix to 'john/'
+  branchlet prefix --clear     # Clear branch prefix
   branchlet --from-wrapper     # Used by shell wrapper to enable directory switching
   branchlet delete             # Go directly to delete worktree flow
   branchlet settings           # Open settings menu
@@ -97,7 +112,7 @@ For more information, visit: https://github.com/raghavpillai/git-worktree-manage
 }
 
 function main(): void {
-  const { mode, help, isFromWrapper, quickCreateName } = parseArguments()
+  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix } = parseArguments()
 
   if (help) {
     showHelp()
@@ -132,6 +147,8 @@ function main(): void {
       initialMode={mode}
       isFromWrapper={isFromWrapper}
       quickCreateName={quickCreateName}
+      prefixArg={prefixArg}
+      clearPrefix={clearPrefix}
       onExit={() => {
         if (!hasExited) {
           hasExited = true

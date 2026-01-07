@@ -15,10 +15,12 @@ interface AppProps {
   initialMode?: AppMode
   isFromWrapper?: boolean
   quickCreateName?: string | undefined
+  prefixArg?: string | undefined
+  clearPrefix?: boolean | undefined
   onExit?: () => void
 }
 
-export function App({ initialMode = "menu", isFromWrapper = false, quickCreateName, onExit }: AppProps) {
+export function App({ initialMode = "menu", isFromWrapper = false, quickCreateName, prefixArg, clearPrefix, onExit }: AppProps) {
   const [mode, setMode] = useState<AppMode>(initialMode)
   const [worktreeService, setWorktreeService] = useState<WorktreeService | null>(null)
   const [error, setError] = useState<string>()
@@ -151,6 +153,8 @@ export function App({ initialMode = "menu", isFromWrapper = false, quickCreateNa
       shellIntegrationStatus={shellIntegrationStatus}
       isFromWrapper={isFromWrapper}
       quickCreateName={quickCreateName}
+      prefixArg={prefixArg}
+      clearPrefix={clearPrefix}
       onMenuSelect={handleMenuSelect}
       onBackToMenu={handleBackToMenu}
       onExit={handleExit}

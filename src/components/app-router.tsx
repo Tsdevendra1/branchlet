@@ -8,6 +8,7 @@ import {
   DeleteWorktree,
   ListWorktrees,
   MainPanel,
+  PrefixPanel,
   SettingsMenu,
   SetupShellIntegration,
 } from "../panels/index.js"
@@ -24,6 +25,8 @@ interface AppRouterProps {
   shellIntegrationStatus: ShellIntegrationStatus | null
   isFromWrapper: boolean
   quickCreateName?: string | undefined
+  prefixArg?: string | undefined
+  clearPrefix?: boolean | undefined
   onMenuSelect: (value: AppMode | "exit", selectedIndex?: number) => void
   onBackToMenu: () => void
   onExit: () => void
@@ -38,6 +41,8 @@ export function AppRouter({
   shellIntegrationStatus,
   isFromWrapper,
   quickCreateName,
+  prefixArg,
+  clearPrefix,
   onMenuSelect,
   onBackToMenu,
   onExit,
@@ -130,6 +135,17 @@ export function AppRouter({
                 process.stdout.write(`${JSON.stringify({ navigateTo, deleteWorktree })}\n`)
                 onExit()
               }}
+            />
+          </Box>
+        )}
+
+        {mode === "prefix" && (
+          <Box borderStyle="round" paddingX={1} borderColor={borderColor}>
+            <PrefixPanel
+              worktreeService={worktreeService}
+              prefixArg={prefixArg}
+              clearPrefix={clearPrefix}
+              onComplete={onExit}
             />
           </Box>
         )}

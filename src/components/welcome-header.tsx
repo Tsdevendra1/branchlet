@@ -34,6 +34,7 @@ export function WelcomeHeader({ mode, gitRoot }: WelcomeHeaderProps) {
       close: "Close",
       settings: "Settings",
       setup: "Setup",
+      prefix: "Branch Prefix",
     }
 
     return (

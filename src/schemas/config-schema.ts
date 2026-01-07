@@ -30,6 +30,10 @@ export const WorktreeConfigSchema = z
       .boolean()
       .default(false)
       .describe("Also delete the associated git branch when deleting a worktree"),
+    branchPrefix: z
+      .string()
+      .default("")
+      .describe("Prefix to add to new branch names (e.g., 'john/' or 'feature/')"),
   })
   .describe("Configuration for Git worktree management tool")
 

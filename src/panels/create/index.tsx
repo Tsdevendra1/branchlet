@@ -27,6 +27,14 @@ interface CreateWorktreeProps {
   onPathSelect?: (path: string) => void
 }
 
+// Apply branch prefix with smart deduplication
+function applyBranchPrefix(branchName: string, prefix: string): string {
+  if (!prefix || !branchName) return branchName
+  // Don't double-prefix if name already starts with the prefix
+  if (branchName.startsWith(prefix)) return branchName
+  return `${prefix}${branchName}`
+}
+
 export function CreateWorktree({
   worktreeService,
   onComplete,
@@ -72,6 +80,11 @@ export function CreateWorktree({
       return
     }
 
+    // Get config for prefix
+    const config = worktreeService.getConfigService().getConfig()
+    const prefix = config.branchPrefix || ""
+    const prefixedBranchName = applyBranchPrefix(quickCreateName, prefix)
+
     // Validate directory name
     const dirError = validateDirectoryName(quickCreateName)
     if (dirError) {
@@ -82,8 +95,8 @@ export function CreateWorktree({
       return
     }
 
-    // Validate branch name
-    const branchError = validateBranchName(quickCreateName)
+    // Validate branch name (with prefix)
+    const branchError = validateBranchName(prefixedBranchName)
     if (branchError) {
       setState((prev) => ({
         ...prev,
@@ -92,12 +105,12 @@ export function CreateWorktree({
       return
     }
 
-    // Check if branch already exists
-    const existingBranch = branches.find((b) => b.name === quickCreateName)
+    // Check if branch already exists (with prefix)
+    const existingBranch = branches.find((b) => b.name === prefixedBranchName)
     if (existingBranch) {
       setState((prev) => ({
         ...prev,
-        error: `Branch '${quickCreateName}' already exists`,
+        error: `Branch '${prefixedBranchName}' already exists`,
       }))
       return
     }
@@ -117,7 +130,7 @@ export function CreateWorktree({
       step: "directory",
       directoryName: quickCreateName,
       sourceBranch: currentBranch.name,
-      newBranch: quickCreateName,
+      newBranch: prefixedBranchName,
     })
 
     // Trigger creation asynchronously
@@ -125,7 +138,6 @@ export function CreateWorktree({
       try {
         setState((prev) => ({ ...prev, step: "creating" }))
 
-        const config = worktreeService.getConfigService().getConfig()
         const gitRoot = repoPath || getRepositoryRoot()
         const worktreePath = getWorktreePath(gitRoot, quickCreateName, config.worktreePathTemplate)
         const parentDir = worktreePath.replace(`/${quickCreateName}`, "")
@@ -134,7 +146,7 @@ export function CreateWorktree({
         await gitService.createWorktree({
           name: quickCreateName,
           sourceBranch: currentBranch.name,
-          newBranch: quickCreateName,
+          newBranch: prefixedBranchName,
           basePath: parentDir,
         })
 
@@ -154,7 +166,7 @@ export function CreateWorktree({
           const variables = {
             BASE_PATH: gitRoot.split("/").pop() || "",
             WORKTREE_PATH: worktreePath,
-            BRANCH_NAME: quickCreateName,
+            BRANCH_NAME: prefixedBranchName,
             SOURCE_BRANCH: currentBranch.name,
           }
 
@@ -223,9 +235,18 @@ export function CreateWorktree({
 
   const handleNewBranchSubmit = (newBranch: string): void => {
     const trimmedBranch = newBranch.trim()
+    const config = worktreeService.getConfigService().getConfig()
+    const prefix = config.branchPrefix || ""
+
+    // If empty, use source branch (no prefix applied)
+    // If not empty, apply prefix
+    const finalBranch = trimmedBranch
+      ? applyBranchPrefix(trimmedBranch, prefix)
+      : state.sourceBranch
+
     setState((prev) => ({
       ...prev,
-      newBranch: trimmedBranch || prev.sourceBranch,
+      newBranch: finalBranch,
       step: "confirm",
     }))
   }
@@ -235,14 +256,18 @@ export function CreateWorktree({
       return undefined
     }
 
-    const formatError = validateBranchName(name)
+    const config = worktreeService.getConfigService().getConfig()
+    const prefix = config.branchPrefix || ""
+    const prefixedName = applyBranchPrefix(name, prefix)
+
+    const formatError = validateBranchName(prefixedName)
     if (formatError) {
       return formatError
     }
 
-    const existingBranch = branches.find((branch) => branch.name === name)
+    const existingBranch = branches.find((branch) => branch.name === prefixedName)
     if (existingBranch) {
-      return "Branch already exists"
+      return `Branch '${prefixedName}' already exists`
     }
 
     return undefined
