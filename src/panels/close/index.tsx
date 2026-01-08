@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { join, relative } from "node:path"
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
 import { ConfirmDialog, StatusIndicator } from "../../components/common/index.js"
@@ -10,6 +12,22 @@ interface CloseWorktreeProps {
   onCancel: () => void
   isFromWrapper: boolean
   onCloseComplete: (navigateTo: string, deleteWorktree: string) => void
+  originalCwd?: string | undefined
+}
+
+// Calculate target path preserving subdirectory position
+function getTargetPath(mainRepoPath: string, worktreePath: string, originalCwd: string | undefined): string {
+  if (!originalCwd) {
+    return mainRepoPath
+  }
+  const relativePath = relative(worktreePath, originalCwd)
+  // If relative path is empty or goes outside worktree, just use main repo path
+  if (!relativePath || relativePath.startsWith("..")) {
+    return mainRepoPath
+  }
+  const targetPath = join(mainRepoPath, relativePath)
+  // Only use target path if it exists in the main repo
+  return existsSync(targetPath) ? targetPath : mainRepoPath
 }
 
 export function CloseWorktree({
@@ -17,6 +35,7 @@ export function CloseWorktree({
   onCancel,
   isFromWrapper,
   onCloseComplete,
+  originalCwd,
 }: CloseWorktreeProps) {
   const [state, setState] = useState<CloseWorktreeState>({
     step: "checking",
@@ -87,7 +106,8 @@ export function CloseWorktree({
     }
 
     setState((prev) => ({ ...prev, step: "closing" }))
-    onCloseComplete(state.mainRepoPath, state.currentWorktreePath)
+    const targetPath = getTargetPath(state.mainRepoPath, state.currentWorktreePath, originalCwd)
+    onCloseComplete(targetPath, state.currentWorktreePath)
   }
 
   const formatPath = (path: string): string => {
@@ -113,6 +133,7 @@ export function CloseWorktree({
   if (state.step === "confirm") {
     const willDeleteBranch =
       config.deleteBranchWithWorktree && state.branchName && state.branchName !== "detached"
+    const targetPath = getTargetPath(state.mainRepoPath || "", state.currentWorktreePath || "", originalCwd)
 
     return (
       <ConfirmDialog
@@ -132,7 +153,7 @@ export function CloseWorktree({
             )}
             <Box marginTop={1}>
               <Text color={COLORS.INFO}>
-                You will be navigated to: {formatPath(state.mainRepoPath || "")}
+                You will be navigated to: {formatPath(targetPath)}
               </Text>
             </Box>
             <Text color={COLORS.MUTED}>{MESSAGES.CLOSE_WARNING}</Text>

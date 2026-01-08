@@ -138,6 +138,7 @@ export function AppRouter({
               worktreeService={worktreeService}
               onCancel={onExit}
               isFromWrapper={isFromWrapper}
+              originalCwd={originalCwd}
               onCloseComplete={(navigateTo, deleteWorktree) => {
                 process.stdout.write(`${JSON.stringify({ navigateTo, deleteWorktree })}\n`)
                 onExit()
