@@ -191,7 +191,7 @@ export class ShellIntegrationService {
 
     return `# Branchlet setup: added on ${today}
 ${commandName}() {
-  if [ $# -eq 0 ] || [ "$1" = "create" ]; then
+  if [ $# -eq 0 ] || [ "$1" = "create" ] || [ "$1" = "list" ]; then
     local dir=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
     if [ -n "$dir" ]; then
       cd "$dir" && echo "Branchlet: Navigated to $(pwd)"
