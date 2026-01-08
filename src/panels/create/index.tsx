@@ -136,21 +136,33 @@ export function CreateWorktree({
       return
     }
 
-    // Get current branch as source
-    const currentBranch = branches.find((b) => b.isCurrent)
-    if (!currentBranch) {
-      setState((prev) => ({
-        ...prev,
-        error: "Could not determine current branch",
-      }))
-      return
+    // Get source branch - use configured default if set, otherwise current branch
+    let sourceBranch: GitBranch | undefined
+    if (config.defaultSourceBranch) {
+      sourceBranch = branches.find((b) => b.name === config.defaultSourceBranch)
+      if (!sourceBranch) {
+        setState((prev) => ({
+          ...prev,
+          error: `Configured default branch '${config.defaultSourceBranch}' not found`,
+        }))
+        return
+      }
+    } else {
+      sourceBranch = branches.find((b) => b.isCurrent)
+      if (!sourceBranch) {
+        setState((prev) => ({
+          ...prev,
+          error: "Could not determine current branch",
+        }))
+        return
+      }
     }
 
     // Set state for quick create and trigger creation
     setState({
       step: "directory",
       directoryName: quickCreateName,
-      sourceBranch: currentBranch.name,
+      sourceBranch: sourceBranch.name,
       newBranch: prefixedBranchName,
     })
 
@@ -166,7 +178,7 @@ export function CreateWorktree({
         const gitService = worktreeService.getGitService()
         await gitService.createWorktree({
           name: quickCreateName,
-          sourceBranch: currentBranch.name,
+          sourceBranch: sourceBranch.name,
           newBranch: prefixedBranchName,
           basePath: parentDir,
         })
@@ -188,7 +200,7 @@ export function CreateWorktree({
             BASE_PATH: gitRoot.split("/").pop() || "",
             WORKTREE_PATH: worktreePath,
             BRANCH_NAME: prefixedBranchName,
-            SOURCE_BRANCH: currentBranch.name,
+            SOURCE_BRANCH: sourceBranch.name,
           }
 
           await executePostCreateCommands(config.postCreateCmd, variables, (command, current, total) => {
@@ -372,13 +384,20 @@ export function CreateWorktree({
   }
 
   const getBranchOptions = (): SelectOption<string>[] => {
+    const config = worktreeService.getConfigService().getConfig()
+    const configuredDefault = config.defaultSourceBranch
     const options: SelectOption<string>[] = []
 
     for (const branch of branches) {
+      // Use configured default if set and exists, otherwise use current branch
+      const isSelectedDefault = configuredDefault
+        ? branch.name === configuredDefault
+        : branch.isCurrent
+
       const option: SelectOption<string> = {
         label: branch.name,
         value: branch.name,
-        isDefault: branch.isCurrent,
+        isDefault: isSelectedDefault,
       }
 
       if (branch.isCurrent) {

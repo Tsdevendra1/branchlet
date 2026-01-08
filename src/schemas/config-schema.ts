@@ -34,6 +34,10 @@ export const WorktreeConfigSchema = z
       .string()
       .default("")
       .describe("Prefix to add to new branch names (e.g., 'john/' or 'feature/')"),
+    defaultSourceBranch: z
+      .string()
+      .default("")
+      .describe("Default branch to create worktrees from (empty = use current branch)"),
   })
   .describe("Configuration for Git worktree management tool")
 
