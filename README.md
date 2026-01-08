@@ -44,10 +44,14 @@ Opens the main menu with all available options.
 
 ### Direct Commands
 ```bash
-branchlet create    # Go directly to worktree creation
-branchlet list      # List all worktrees
-branchlet delete    # Go directly to worktree deletion
-branchlet settings  # Open settings menu
+branchlet create           # Go directly to worktree creation
+branchlet create feature-x # Quick create worktree with name 'feature-x'
+branchlet list             # List all worktrees
+branchlet delete           # Go directly to worktree deletion
+branchlet close            # Close current worktree and return to main repo
+branchlet prefix john      # Set branch prefix to 'john/'
+branchlet prefix --clear   # Clear branch prefix
+branchlet settings         # Open settings menu
 ```
 
 ### Options
@@ -55,6 +59,7 @@ branchlet settings  # Open settings menu
 branchlet --help     # Show help information
 branchlet --version  # Show version number
 branchlet -m create  # Set initial mode
+branchlet --from-wrapper # Used by shell wrapper to enable directory switching
 ```
 
 ## Configuration
