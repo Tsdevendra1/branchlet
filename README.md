@@ -46,6 +46,7 @@ Opens the main menu with all available options.
 ```bash
 branchlet create           # Go directly to worktree creation
 branchlet create feature-x # Quick create worktree with name 'feature-x'
+branchlet create feature-x --from main  # Create from specific branch
 branchlet list             # List all worktrees
 branchlet delete           # Go directly to worktree deletion
 branchlet close            # Close current worktree and return to main repo
@@ -56,10 +57,11 @@ branchlet settings         # Open settings menu
 
 ### Options
 ```bash
-branchlet --help     # Show help information
-branchlet --version  # Show version number
-branchlet -m create  # Set initial mode
-branchlet --from-wrapper # Used by shell wrapper to enable directory switching
+branchlet --help           # Show help information
+branchlet --version        # Show version number
+branchlet -m create        # Set initial mode
+branchlet --from <branch>  # Source branch to create worktree from (overrides config)
+branchlet --from-wrapper   # Used by shell wrapper to enable directory switching
 ```
 
 ## Configuration
@@ -79,7 +81,9 @@ Create a `.branchlet.json` file in your project root or configure global setting
   "worktreePathTemplate": "$BASE_PATH.worktree",
   "postCreateCmd": ["npm install", "npm run db:generate"],
   "terminalCommand": "code .",
-  "deleteBranchWithWorktree": true
+  "deleteBranchWithWorktree": true,
+  "branchPrefix": "feature/",
+  "defaultSourceBranch": "main"
 }
 ```
 
@@ -110,6 +114,16 @@ Create a `.branchlet.json` file in your project root or configure global setting
   - Default: `false`
   - When enabled, deleting a worktree will also delete its branch (with safety checks)
   - Shows warnings for branches with unpushed commits or uncommitted changes
+
+- **`branchPrefix`**: Prefix to automatically add to new branch names
+  - Default: `""`
+  - Examples: `"feature/"`, `"john/"`, `"fix/"`
+  - When set to `"feature/"`, creating a branch named `auth` will create `feature/auth`
+
+- **`defaultSourceBranch`**: Default branch to create worktrees from
+  - Default: `""` (uses current branch)
+  - Examples: `"main"`, `"develop"`
+  - Can be overridden with `--from` flag: `branchlet create feature-x --from develop`
 
 ### Template Variables
 
@@ -159,7 +173,9 @@ Create `.branchlet.json` in your project:
     "npm run db:populate"
   ],
   "terminalCommand": "code .",
-  "deleteBranchWithWorktree": true
+  "deleteBranchWithWorktree": true,
+  "branchPrefix": "feature/",
+  "defaultSourceBranch": "main"
 }
 ```
 
