@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { join, relative } from "node:path"
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
 import { SelectPrompt, StatusIndicator } from "../../components/common/index.js"
@@ -6,11 +8,32 @@ import { openTerminal } from "../../services/file-service.js"
 import type { WorktreeService } from "../../services/index.js"
 import type { GitWorktree, SelectOption } from "../../types/index.js"
 
+/**
+ * Calculates target path preserving the user's current subdirectory
+ */
+function getTargetPath(worktreePath: string, gitRoot: string | undefined, originalCwd: string | undefined): string {
+  if (!gitRoot || !originalCwd) {
+    return worktreePath
+  }
+  // Calculate relative path from git root to where user was
+  const relativePath = relative(gitRoot, originalCwd)
+  // If relative path is empty or goes outside git root, just use worktree path
+  if (!relativePath || relativePath.startsWith("..")) {
+    return worktreePath
+  }
+  // Apply same relative path to the new worktree
+  const targetPath = join(worktreePath, relativePath)
+  // Only use target path if it exists in the new worktree
+  return existsSync(targetPath) ? targetPath : worktreePath
+}
+
 interface ListWorktreesProps {
   worktreeService: WorktreeService
   onBack: () => void
   isFromWrapper?: boolean
   onPathSelect?: (path: string) => void
+  originalCwd?: string | undefined
+  gitRoot?: string | undefined
 }
 
 type NavigationMode = "list" | "action-menu"
@@ -20,6 +43,8 @@ export function ListWorktrees({
   onBack,
   isFromWrapper = false,
   onPathSelect,
+  originalCwd,
+  gitRoot,
 }: ListWorktreesProps) {
   const [worktrees, setWorktrees] = useState<GitWorktree[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,8 +136,14 @@ export function ListWorktrees({
     if (key.return) {
       const worktree = worktrees[selectedIndex]
       if (worktree) {
-        setSelectedWorktree(worktree)
-        setNavigationMode("action-menu")
+        if (isFromWrapper && onPathSelect) {
+          // Auto-navigate with subdirectory preservation
+          onPathSelect(getTargetPath(worktree.path, gitRoot, originalCwd))
+        } else {
+          // Show action menu for users without shell integration
+          setSelectedWorktree(worktree)
+          setNavigationMode("action-menu")
+        }
       }
       return
     }

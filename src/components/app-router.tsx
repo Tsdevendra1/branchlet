@@ -95,6 +95,8 @@ export function AppRouter({
               worktreeService={worktreeService}
               onBack={onBackToMenu}
               isFromWrapper={isFromWrapper}
+              originalCwd={originalCwd}
+              gitRoot={gitRoot}
               onPathSelect={(path) => {
                 process.stdout.write(`${path}\n`)
                 onExit()
