@@ -9,9 +9,9 @@ import type { AppMode } from "./types/index.js"
 const VERSION = packageJson.version
 const ORIGINAL_CWD = process.cwd()
 
-function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean } {
+function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean; fromBranch?: string | undefined } {
   const argv = minimist(process.argv.slice(2), {
-    string: ["mode"],
+    string: ["mode", "from"],
     boolean: ["help", "version", "from-wrapper", "clear"],
     alias: {
       h: "help",
@@ -34,6 +34,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
   let quickCreateName: string | undefined
   let prefixArg: string | undefined
   let clearPrefix: boolean = false
+  const fromBranch: string | undefined = argv.from ? String(argv.from) : undefined
 
   if (argv.mode && validModes.includes(argv.mode as AppMode)) {
     mode = argv.mode as AppMode
@@ -63,7 +64,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
 
   const isFromWrapper = argv["from-wrapper"] === true
 
-  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix }
+  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch }
 }
 
 function showHelp(): void {
@@ -83,15 +84,17 @@ Commands:
   (no command)   Start interactive menu
 
 Options:
-  -h, --help     Show this help message
-  -v, --version  Show version number
-  -m, --mode     Set initial mode
-  --from-wrapper Called from shell wrapper (outputs path to stdout)
+  -h, --help         Show this help message
+  -v, --version      Show version number
+  -m, --mode         Set initial mode
+  --from <branch>    Source branch to create worktree from (overrides config)
+  --from-wrapper     Called from shell wrapper (outputs path to stdout)
 
 Examples:
   branchlet                    # Start interactive menu
   branchlet create             # Go directly to create worktree flow
   branchlet create feature-x   # Quick create worktree with name 'feature-x'
+  branchlet create feature-x --from main  # Create from 'main' branch
   branchlet list               # List all worktrees
   branchlet prefix john        # Set branch prefix to 'john/'
   branchlet prefix --clear     # Clear branch prefix
@@ -113,7 +116,7 @@ For more information, visit: https://github.com/raghavpillai/git-worktree-manage
 }
 
 function main(): void {
-  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix } = parseArguments()
+  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch } = parseArguments()
 
   if (help) {
     showHelp()
@@ -148,6 +151,7 @@ function main(): void {
       initialMode={mode}
       isFromWrapper={isFromWrapper}
       quickCreateName={quickCreateName}
+      fromBranch={fromBranch}
       prefixArg={prefixArg}
       clearPrefix={clearPrefix}
       originalCwd={ORIGINAL_CWD}

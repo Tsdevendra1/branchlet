@@ -26,6 +26,7 @@ interface CreateWorktreeProps {
   onCancel: () => void
   isFromWrapper?: boolean
   quickCreateName?: string | undefined
+  fromBranch?: string | undefined
   originalCwd?: string | undefined
   gitRoot?: string | undefined
   onPathSelect?: (path: string) => void
@@ -60,6 +61,7 @@ export function CreateWorktree({
   onCancel,
   isFromWrapper = false,
   quickCreateName,
+  fromBranch,
   originalCwd,
   gitRoot: gitRootProp,
   onPathSelect,
@@ -136,9 +138,18 @@ export function CreateWorktree({
       return
     }
 
-    // Get source branch - use configured default if set, otherwise current branch
+    // Get source branch - priority: CLI --from > config defaultSourceBranch > current branch
     let sourceBranch: GitBranch | undefined
-    if (config.defaultSourceBranch) {
+    if (fromBranch) {
+      sourceBranch = branches.find((b) => b.name === fromBranch)
+      if (!sourceBranch) {
+        setState((prev) => ({
+          ...prev,
+          error: `Specified branch '${fromBranch}' not found`,
+        }))
+        return
+      }
+    } else if (config.defaultSourceBranch) {
       sourceBranch = branches.find((b) => b.name === config.defaultSourceBranch)
       if (!sourceBranch) {
         setState((prev) => ({
@@ -236,7 +247,7 @@ export function CreateWorktree({
     }
 
     triggerQuickCreate()
-  }, [quickCreateName, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete, gitRootProp, originalCwd])
+  }, [quickCreateName, fromBranch, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete, gitRootProp, originalCwd])
 
   useInput((input, key) => {
     if (state.error) {
@@ -389,10 +400,15 @@ export function CreateWorktree({
     const options: SelectOption<string>[] = []
 
     for (const branch of branches) {
-      // Use configured default if set and exists, otherwise use current branch
-      const isSelectedDefault = configuredDefault
-        ? branch.name === configuredDefault
-        : branch.isCurrent
+      // Priority: CLI --from > config defaultSourceBranch > current branch
+      let isSelectedDefault: boolean
+      if (fromBranch) {
+        isSelectedDefault = branch.name === fromBranch
+      } else if (configuredDefault) {
+        isSelectedDefault = branch.name === configuredDefault
+      } else {
+        isSelectedDefault = branch.isCurrent
+      }
 
       const option: SelectOption<string> = {
         label: branch.name,

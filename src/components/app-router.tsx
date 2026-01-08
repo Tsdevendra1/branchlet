@@ -25,6 +25,7 @@ interface AppRouterProps {
   shellIntegrationStatus: ShellIntegrationStatus | null
   isFromWrapper: boolean
   quickCreateName?: string | undefined
+  fromBranch?: string | undefined
   prefixArg?: string | undefined
   clearPrefix?: boolean | undefined
   originalCwd?: string | undefined
@@ -42,6 +43,7 @@ export function AppRouter({
   shellIntegrationStatus,
   isFromWrapper,
   quickCreateName,
+  fromBranch,
   prefixArg,
   clearPrefix,
   originalCwd,
@@ -76,6 +78,7 @@ export function AppRouter({
               onCancel={onBackToMenu}
               isFromWrapper={isFromWrapper}
               quickCreateName={quickCreateName}
+              fromBranch={fromBranch}
               originalCwd={originalCwd}
               gitRoot={gitRoot}
               onPathSelect={(path) => {
