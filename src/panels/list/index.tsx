@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { join, relative } from "node:path"
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
-import { SelectPrompt, StatusIndicator } from "../../components/common/index.js"
+import { ConfirmDialog, SelectPrompt, StatusIndicator } from "../../components/common/index.js"
 import { COLORS, MESSAGES } from "../../constants/index.js"
 import { openTerminal } from "../../services/file-service.js"
 import type { WorktreeService } from "../../services/index.js"
@@ -36,7 +36,12 @@ interface ListWorktreesProps {
   gitRoot?: string | undefined
 }
 
-type NavigationMode = "list" | "action-menu"
+type NavigationMode = "list" | "action-menu" | "batch-delete-confirm" | "batch-deleting" | "batch-delete-result"
+
+interface BatchDeleteResult {
+  success: string[]
+  failed: { path: string; error: string }[]
+}
 
 export function ListWorktrees({
   worktreeService,
@@ -52,6 +57,11 @@ export function ListWorktrees({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [navigationMode, setNavigationMode] = useState<NavigationMode>("list")
   const [selectedWorktree, setSelectedWorktree] = useState<GitWorktree | null>(null)
+  const [selectedForDeletion, setSelectedForDeletion] = useState<Set<string>>(new Set())
+  const [batchDeleteResult, setBatchDeleteResult] = useState<BatchDeleteResult | null>(null)
+  const [currentlyDeleting, setCurrentlyDeleting] = useState<string | null>(null)
+
+  const config = worktreeService.getConfigService().getConfig()
 
   const loadWorktrees = useCallback(async (): Promise<void> => {
     try {
@@ -61,6 +71,16 @@ export function ListWorktrees({
       const repoInfo = await gitService.getRepositoryInfo()
       const additionalWorktrees = repoInfo.worktrees.filter((wt) => !wt.isMain)
       setWorktrees(additionalWorktrees)
+      // Clean up any selected items that no longer exist
+      setSelectedForDeletion((prev) => {
+        const newSet = new Set<string>()
+        for (const path of prev) {
+          if (additionalWorktrees.some((wt) => wt.path === path)) {
+            newSet.add(path)
+          }
+        }
+        return newSet
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -110,7 +130,60 @@ export function ListWorktrees({
     [selectedWorktree, isFromWrapper, onPathSelect, handleOpenWithCommand]
   )
 
+  const toggleSelection = useCallback((path: string) => {
+    setSelectedForDeletion((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(path)) {
+        newSet.delete(path)
+      } else {
+        newSet.add(path)
+      }
+      return newSet
+    })
+  }, [])
+
+  const executeBatchDelete = useCallback(async () => {
+    const pathsToDelete = Array.from(selectedForDeletion)
+    const result: BatchDeleteResult = { success: [], failed: [] }
+
+    setNavigationMode("batch-deleting")
+
+    for (const path of pathsToDelete) {
+      setCurrentlyDeleting(path)
+      try {
+        // Check if worktree has uncommitted changes
+        const worktree = worktrees.find((wt) => wt.path === path)
+        const force = worktree ? !worktree.isClean : false
+        await worktreeService.deleteWorktree(path, force)
+        result.success.push(path)
+      } catch (err) {
+        result.failed.push({
+          path,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    setCurrentlyDeleting(null)
+    setBatchDeleteResult(result)
+    setSelectedForDeletion(new Set())
+    setNavigationMode("batch-delete-result")
+  }, [selectedForDeletion, worktrees, worktreeService])
+
   useInput((input, key) => {
+    // Handle batch delete result - any key returns to list
+    if (navigationMode === "batch-delete-result") {
+      if (key.escape || key.return || input) {
+        setBatchDeleteResult(null)
+        loadWorktrees()
+        setNavigationMode("list")
+      }
+      return
+    }
+
+    // Skip input handling during delete confirmation (ConfirmDialog handles it)
+    if (navigationMode === "batch-delete-confirm") return
+    if (navigationMode === "batch-deleting") return
     if (navigationMode === "action-menu") return
 
     if (key.escape) {
@@ -130,6 +203,21 @@ export function ListWorktrees({
 
     if (key.downArrow) {
       setSelectedIndex((prev) => (prev === worktrees.length - 1 ? 0 : prev + 1))
+      return
+    }
+
+    // Space to toggle selection
+    if (input === " ") {
+      const worktree = worktrees[selectedIndex]
+      if (worktree) {
+        toggleSelection(worktree.path)
+      }
+      return
+    }
+
+    // 'd' to delete selected (only when items are selected)
+    if (input.toLowerCase() === "d" && selectedForDeletion.size > 0) {
+      setNavigationMode("batch-delete-confirm")
       return
     }
 
@@ -190,6 +278,114 @@ export function ListWorktrees({
     )
   }
 
+  // Batch delete result screen
+  if (navigationMode === "batch-delete-result" && batchDeleteResult) {
+    const { success, failed } = batchDeleteResult
+    const hasFailures = failed.length > 0
+
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1}>
+          <Text color={hasFailures ? COLORS.WARNING : COLORS.SUCCESS} bold>
+            {hasFailures
+              ? `${success.length} ${MESSAGES.BATCH_DELETE_PARTIAL} ${failed.length}`
+              : `${success.length} ${MESSAGES.BATCH_DELETE_SUCCESS}`}
+          </Text>
+        </Box>
+
+        {success.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text color={COLORS.SUCCESS}>Deleted:</Text>
+            {success.map((path) => (
+              <Text key={path} color={COLORS.MUTED}>
+                {"  "}
+                {formatPath(path)}
+              </Text>
+            ))}
+          </Box>
+        )}
+
+        {failed.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text color={COLORS.ERROR}>Failed:</Text>
+            {failed.map(({ path, error }) => (
+              <Box key={path} flexDirection="column">
+                <Text color={COLORS.ERROR}>
+                  {"  "}
+                  {formatPath(path)}
+                </Text>
+                <Text color={COLORS.MUTED} dimColor>
+                  {"    "}
+                  {error}
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        <Box marginTop={1}>
+          <Text color={COLORS.MUTED}>Press any key to continue...</Text>
+        </Box>
+      </Box>
+    )
+  }
+
+  // Batch deleting progress screen
+  if (navigationMode === "batch-deleting") {
+    const total = selectedForDeletion.size
+    const deletingWorktree = worktrees.find((wt) => wt.path === currentlyDeleting)
+    const branchName = deletingWorktree?.branch || ""
+    return (
+      <StatusIndicator
+        status="loading"
+        message={`Deleting worktrees... ${branchName ? `(${branchName})` : ""}`}
+      />
+    )
+  }
+
+  // Batch delete confirmation screen
+  if (navigationMode === "batch-delete-confirm") {
+    const selectedWorktrees = worktrees.filter((wt) => selectedForDeletion.has(wt.path))
+    const hasUncommittedChanges = selectedWorktrees.some((wt) => !wt.isClean)
+    const willDeleteBranches = config.deleteBranchWithWorktree
+
+    return (
+      <ConfirmDialog
+        title={`${MESSAGES.BATCH_DELETE_CONFIRM_TITLE} (${selectedWorktrees.length})`}
+        message={
+          <Box flexDirection="column">
+            <Text>The following worktrees will be deleted:</Text>
+            <Box flexDirection="column" marginY={1}>
+              {selectedWorktrees.map((wt) => (
+                <Box key={wt.path}>
+                  <Text color={COLORS.MUTED}>• </Text>
+                  <Text>{formatPath(wt.path)}</Text>
+                  <Text color={COLORS.SUCCESS}> ({wt.branch})</Text>
+                  {!wt.isClean && <Text color={COLORS.WARNING}> [has changes]</Text>}
+                </Box>
+              ))}
+            </Box>
+            {willDeleteBranches && (
+              <Text color={COLORS.WARNING}>
+                Associated branches will also be deleted.
+              </Text>
+            )}
+            {hasUncommittedChanges && (
+              <Text color={COLORS.ERROR}>
+                Some worktrees have uncommitted changes that will be lost!
+              </Text>
+            )}
+            <Text color={COLORS.MUTED}>{MESSAGES.DELETE_WARNING}</Text>
+          </Box>
+        }
+        variant={hasUncommittedChanges ? "danger" : "warning"}
+        confirmLabel={MESSAGES.BATCH_DELETE_CONFIRM_LABEL}
+        onConfirm={executeBatchDelete}
+        onCancel={() => setNavigationMode("list")}
+      />
+    )
+  }
+
   if (navigationMode === "action-menu" && selectedWorktree) {
     const config = worktreeService.getConfigService().getConfig()
     const actions: SelectOption[] = []
@@ -235,6 +431,14 @@ export function ListWorktrees({
     )
   }
 
+  // Build hint text
+  const hintParts = ["↑↓ Navigate", "Space Toggle"]
+  if (selectedForDeletion.size > 0) {
+    hintParts.push(`d Delete (${selectedForDeletion.size})`)
+  }
+  hintParts.push("Enter Action Menu", "E Command", "Esc Back")
+  const hintText = hintParts.join(" • ")
+
   return (
     <Box flexDirection="column" width="100%">
       <Box justifyContent="space-between" width="100%">
@@ -249,7 +453,9 @@ export function ListWorktrees({
       {worktrees.map((worktree, index) => {
         const path = formatPath(worktree.path)
         const isSelected = index === selectedIndex
+        const isMarkedForDeletion = selectedForDeletion.has(worktree.path)
         const marker = isSelected ? "> " : "  "
+        const checkbox = isMarkedForDeletion ? "[x] " : "[ ] "
 
         return (
           <Box key={worktree.path} justifyContent="space-between" width="100%">
@@ -261,6 +467,7 @@ export function ListWorktrees({
                   : {})}
             >
               {marker}
+              <Text {...(isMarkedForDeletion ? { color: COLORS.WARNING } : {})}>{checkbox}</Text>
               {path}
             </Text>
             <Text color={COLORS.SUCCESS}>{worktree.branch}</Text>
@@ -270,7 +477,7 @@ export function ListWorktrees({
 
       <Box marginTop={2}>
         <Text color={COLORS.MUTED} dimColor>
-          ↑↓ Navigate • Enter Action Menu • E Command • Esc Back
+          {hintText}
         </Text>
       </Box>
     </Box>

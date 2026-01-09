@@ -28,6 +28,12 @@ export const MESSAGES = {
   DELETE_SUCCESS: "Worktree deleted successfully!",
   DELETE_DELETING: "Deleting worktree...",
 
+  // Batch delete flow
+  BATCH_DELETE_CONFIRM_TITLE: "Delete Worktrees",
+  BATCH_DELETE_CONFIRM_LABEL: "Delete All",
+  BATCH_DELETE_SUCCESS: "worktrees deleted successfully",
+  BATCH_DELETE_PARTIAL: "deleted, failed",
+
   // Close flow
   CLOSE_CHECKING: "Checking current worktree...",
   CLOSE_CONFIRM_TITLE: "Close Current Worktree",
