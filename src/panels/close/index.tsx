@@ -65,8 +65,18 @@ export function CloseWorktree({
         return
       }
 
+      // Check shell integration before proceeding
+      if (!isFromWrapper) {
+        setState({
+          step: "error",
+          error: MESSAGES.CLOSE_REQUIRES_SHELL_INTEGRATION,
+        })
+        return
+      }
+
+      // Skip confirmation and proceed directly to closing
       const newState: CloseWorktreeState = {
-        step: "confirm",
+        step: "closing",
         currentWorktreePath: info.worktreePath,
         mainRepoPath: info.mainRepoPath,
       }
@@ -74,13 +84,15 @@ export function CloseWorktree({
         newState.branchName = info.branch
       }
       setState(newState)
+      const targetPath = getTargetPath(info.mainRepoPath, info.worktreePath, originalCwd)
+      onCloseComplete(targetPath, info.worktreePath)
     } catch (error) {
       setState({
         step: "error",
         error: error instanceof Error ? error.message : String(error),
       })
     }
-  }, [worktreeService])
+  }, [worktreeService, isFromWrapper, originalCwd, onCloseComplete])
 
   useEffect(() => {
     checkCurrentWorktree()
