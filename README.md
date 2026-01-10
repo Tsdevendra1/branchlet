@@ -61,7 +61,39 @@ branchlet --help           # Show help information
 branchlet --version        # Show version number
 branchlet -m create        # Set initial mode
 branchlet --from <branch>  # Source branch to create worktree from (overrides config)
-branchlet --from-wrapper   # Used by shell wrapper to enable directory switching
+```
+
+## Shell Integration
+
+For the best experience, set up shell integration to enable automatic directory switching when creating or selecting worktrees.
+
+### Setup
+
+Run `branchlet` and select **"Setup Shell Integration"** from the menu. This adds a wrapper function and shorthand aliases to your shell config (`~/.zshrc` or `~/.bashrc`).
+
+After setup, reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bashrc
+```
+
+### Shorthand Aliases
+
+After shell integration, you can use these shortcuts:
+
+| Alias | Command | Description |
+|-------|---------|-------------|
+| `bl` | `branchlet` | Open interactive menu |
+| `blc` | `branchlet create` | Create a new worktree |
+| `bll` | `branchlet list` | List and switch worktrees |
+| `blx` | `branchlet close` | Close current worktree |
+
+### Examples with Aliases
+```bash
+bl                    # Open interactive menu
+blc                   # Create worktree interactively
+blc feature-auth      # Quick create worktree named 'feature-auth'
+bll                   # List worktrees and switch to one
+blx                   # Close current worktree and return to main repo
 ```
 
 ## Configuration
