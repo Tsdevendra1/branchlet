@@ -86,9 +86,13 @@ export function SetupShellIntegration({
           <Text color={COLORS.MUTED} dimColor>
             Reload your shell: <Text color={COLORS.PRIMARY}>source {configFile}</Text>
           </Text>
-          <Box marginTop={1}>
+          <Box marginTop={1} flexDirection="column">
             <Text color={COLORS.SUCCESS}>
-              Try it now: <Text bold>branchlet</Text>
+              Try it now: <Text bold>branchlet</Text> or <Text bold>bl</Text>
+            </Text>
+            <Text color={COLORS.MUTED} dimColor>
+              Shortcuts: <Text bold>blc</Text> (create), <Text bold>bll</Text> (list),{" "}
+              <Text bold>blx</Text> (close)
             </Text>
           </Box>
         </Box>
@@ -122,7 +126,7 @@ export function SetupShellIntegration({
         message={
           <Box flexDirection="column" gap={1}>
             <Text>
-              This will add the following function to <Text bold>{configFile}</Text>:
+              This will add the following to <Text bold>{configFile}</Text>:
             </Text>
             <Box
               marginTop={1}
@@ -131,25 +135,27 @@ export function SetupShellIntegration({
               paddingY={1}
               borderStyle="round"
               borderColor={COLORS.MUTED}
+              flexDirection="column"
             >
               <Text color={COLORS.MUTED} dimColor>
                 {`${commandName}() {
-  if [ $# -eq 0 ] || [ "$1" = "create" ]; then
-    local dir=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
-    if [ -n "$dir" ]; then
-      cd "$dir" && echo "Branchlet: Navigated to $(pwd)"
-    fi
-  else
-    command ${commandName} "$@"
-  fi
-}`}
+  # Wrapper function for directory switching
+  # (handles create, list, close commands)
+}
+
+# Shorthand aliases
+alias bl='${commandName}'
+alias blc='${commandName} create'
+alias bll='${commandName} list'
+alias blx='${commandName} close'`}
               </Text>
             </Box>
             <Text color={COLORS.INFO}>
               After installation, run: <Text bold>source {configFile}</Text>
             </Text>
             <Text color={COLORS.SUCCESS}>
-              Then use: <Text bold>{commandName}</Text> to quickly switch directories
+              Then use: <Text bold>{commandName}</Text> or <Text bold>bl</Text> to quickly switch
+              directories
             </Text>
           </Box>
         }

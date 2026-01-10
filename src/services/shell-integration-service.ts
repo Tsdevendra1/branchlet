@@ -13,6 +13,7 @@ export interface ShellIntegrationStatus {
 // biome-ignore lint/complexity/noStaticOnlyClass: Service class pattern
 export class ShellIntegrationService {
   private static readonly WRAPPER_SIGNATURE = "# Branchlet setup: added on"
+  private static readonly WRAPPER_END_SIGNATURE = "# Branchlet setup end"
 
   /**
    * Detects if shell integration is installed
@@ -89,12 +90,17 @@ export class ShellIntegrationService {
         )
 
         if (startIndex !== -1) {
-          // Find the end of the function (closing brace)
-          let endIndex = startIndex
-          for (let i = startIndex + 1; i < lines.length; i++) {
-            if (lines[i]?.trim() === "}") {
-              endIndex = i
-              break
+          // Find the end marker, or fall back to closing brace for old installations
+          let endIndex = lines.findIndex((line) =>
+            line.includes(ShellIntegrationService.WRAPPER_END_SIGNATURE)
+          )
+          if (endIndex === -1) {
+            // Fall back to finding closing brace for old installations without end marker
+            for (let i = startIndex + 1; i < lines.length; i++) {
+              if (lines[i]?.trim() === "}") {
+                endIndex = i
+                break
+              }
             }
           }
 
@@ -135,12 +141,17 @@ export class ShellIntegrationService {
     )
 
     if (startIndex !== -1) {
-      // Find the end of the function (closing brace)
-      let endIndex = startIndex
-      for (let i = startIndex + 1; i < lines.length; i++) {
-        if (lines[i]?.trim() === "}") {
-          endIndex = i
-          break
+      // Find the end marker, or fall back to closing brace for old installations
+      let endIndex = lines.findIndex((line) =>
+        line.includes(ShellIntegrationService.WRAPPER_END_SIGNATURE)
+      )
+      if (endIndex === -1) {
+        // Fall back to finding closing brace for old installations without end marker
+        for (let i = startIndex + 1; i < lines.length; i++) {
+          if (lines[i]?.trim() === "}") {
+            endIndex = i
+            break
+          }
         }
       }
 
@@ -184,7 +195,7 @@ export class ShellIntegrationService {
   }
 
   /**
-   * Generates the shell wrapper function
+   * Generates the shell wrapper function with aliases
    */
   private static generateWrapperFunction(commandName: string): string {
     const today = new Date().toISOString().split("T")[0]
@@ -210,6 +221,12 @@ ${commandName}() {
   else
     command ${commandName} "$@"
   fi
-}`
+}
+# Shorthand aliases
+alias bl='${commandName}'
+alias blc='${commandName} create'
+alias bll='${commandName} list'
+alias blx='${commandName} close'
+# Branchlet setup end`
   }
 }

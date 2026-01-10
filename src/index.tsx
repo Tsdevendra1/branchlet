@@ -106,6 +106,12 @@ Shell Integration:
   Run 'branchlet' and select "Setup Shell Integration" to enable quick directory switching.
   After setup, just run 'branchlet' to quickly change to any worktree directory.
 
+  Shorthand aliases (after shell integration):
+    bl     branchlet         # Open interactive menu
+    blc    branchlet create  # Create a new worktree
+    bll    branchlet list    # List and switch worktrees
+    blx    branchlet close   # Close current worktree
+
 Configuration:
   The tool looks for configuration files in the following order:
   1. .branchlet.json in current directory
