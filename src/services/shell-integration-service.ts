@@ -215,6 +215,7 @@ ${commandName}() {
       if [ -n "$navigate_to" ] && [ -n "$delete_wt" ]; then
         cd "$navigate_to" && \\
         git worktree remove "$delete_wt" && \\
+        clear && \\
         echo "Branchlet: Closed worktree and navigated to $(pwd)"
       fi
     fi
