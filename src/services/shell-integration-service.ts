@@ -205,7 +205,7 @@ ${commandName}() {
   if [ $# -eq 0 ] || [ "$1" = "create" ] || [ "$1" = "list" ]; then
     local dir=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
     if [ -n "$dir" ]; then
-      cd "$dir" && echo "Branchlet: Navigated to $(pwd)"
+      cd "$dir" && clear && echo "Branchlet: Navigated to $(pwd)"
     fi
   elif [ "$1" = "close" ]; then
     local output=$(FORCE_COLOR=3 command ${commandName} --from-wrapper "$@")
