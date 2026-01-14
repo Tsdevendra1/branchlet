@@ -25,29 +25,33 @@ export class ConfigService {
   async loadConfig(projectPath?: string): Promise<WorktreeConfig> {
     await this.ensureGlobalConfig()
 
-    const configFile = await this.findConfigFile(projectPath)
-
-    if (configFile) {
-      try {
-        const content = await readFile(configFile.path, "utf-8")
-        const parsed = JSON.parse(content)
-
-        const validation = validateConfig(parsed)
-        if (!validation.success) {
-          throw new ConfigError(`Invalid configuration: ${validation.error}`, configFile.path)
-        }
-
-        this.config = validation.data || DEFAULT_CONFIG
-        this.configPath = configFile.path
-      } catch (error) {
-        if (error instanceof ConfigError) {
-          throw error
-        }
-        throw new ConfigError(
-          `Failed to load config from ${configFile.path}: ${error}`,
-          configFile.path
-        )
+    // 1. Load global config first as base
+    try {
+      const globalContent = await readFile(GLOBAL_CONFIG_FILE, "utf-8")
+      const globalParsed = JSON.parse(globalContent)
+      const globalValidation = validateConfig(globalParsed)
+      if (globalValidation.success && globalValidation.data) {
+        this.config = globalValidation.data
       }
+    } catch {
+      // Global config might not exist yet, that's ok
+    }
+
+    // 2. Find and overlay local config if it exists
+    const localPath = join(projectPath || process.cwd(), LOCAL_CONFIG_FILE_NAME)
+    try {
+      await access(localPath)
+      const localContent = await readFile(localPath, "utf-8")
+      const localParsed = JSON.parse(localContent)
+      const localValidation = validateConfig(localParsed)
+      if (localValidation.success && localValidation.data) {
+        // Merge: local overrides global
+        this.config = { ...this.config, ...localValidation.data }
+        this.configPath = localPath
+      }
+    } catch {
+      // No local config, use global path
+      this.configPath = GLOBAL_CONFIG_FILE
     }
 
     return this.config

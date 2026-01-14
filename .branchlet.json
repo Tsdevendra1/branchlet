@@ -13,6 +13,5 @@
   "worktreePathTemplate": "$BASE_PATH.worktree",
   "postCreateCmd": [],
   "terminalCommand": "",
-  "deleteBranchWithWorktree": false,
-  "branchPrefix": "terry/"
+  "deleteBranchWithWorktree": false
 }
