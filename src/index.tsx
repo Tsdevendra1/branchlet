@@ -9,14 +9,15 @@ import type { AppMode } from "./types/index.js"
 const VERSION = packageJson.version
 const ORIGINAL_CWD = process.cwd()
 
-function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean; fromBranch?: string | undefined } {
+function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean; fromBranch?: string | undefined; existingBranch?: string | undefined } {
   const argv = minimist(process.argv.slice(2), {
-    string: ["mode", "from"],
+    string: ["mode", "from", "existing"],
     boolean: ["help", "version", "from-wrapper", "clear"],
     alias: {
       h: "help",
       v: "version",
       m: "mode",
+      e: "existing",
     },
   })
 
@@ -35,6 +36,12 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
   let prefixArg: string | undefined
   let clearPrefix: boolean = false
   const fromBranch: string | undefined = argv.from ? String(argv.from) : undefined
+  const existingBranch: string | undefined = argv.existing ? String(argv.existing) : undefined
+
+  // If --existing is provided, auto-set mode to create
+  if (existingBranch) {
+    mode = "create"
+  }
 
   if (argv.mode && validModes.includes(argv.mode as AppMode)) {
     mode = argv.mode as AppMode
@@ -64,7 +71,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
 
   const isFromWrapper = argv["from-wrapper"] === true
 
-  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch }
+  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch, existingBranch }
 }
 
 function showHelp(): void {
@@ -84,17 +91,19 @@ Commands:
   (no command)   Start interactive menu
 
 Options:
-  -h, --help         Show this help message
-  -v, --version      Show version number
-  -m, --mode         Set initial mode
-  --from <branch>    Source branch to create worktree from (overrides config)
-  --from-wrapper     Called from shell wrapper (outputs path to stdout)
+  -h, --help             Show this help message
+  -v, --version          Show version number
+  -m, --mode             Set initial mode
+  --from <branch>        Source branch to create worktree from (overrides config)
+  -e, --existing <branch>  Create worktree for an existing branch
+  --from-wrapper         Called from shell wrapper (outputs path to stdout)
 
 Examples:
   branchlet                    # Start interactive menu
   branchlet create             # Go directly to create worktree flow
   branchlet create feature-x   # Quick create worktree with name 'feature-x'
   branchlet create feature-x --from main  # Create from 'main' branch
+  branchlet -e feature/my-branch  # Create worktree for existing branch
   branchlet list               # List all worktrees
   branchlet prefix john        # Set branch prefix to 'john/'
   branchlet prefix --clear     # Clear branch prefix
@@ -109,6 +118,7 @@ Shell Integration:
   Shorthand aliases (after shell integration):
     bl     branchlet         # Open interactive menu
     blc    branchlet create  # Create a new worktree
+    blc -e <branch>          # Create worktree for existing branch
     bll    branchlet list    # List and switch worktrees
     blx    branchlet close   # Close current worktree
 
@@ -122,7 +132,7 @@ For more information, visit: https://github.com/raghavpillai/git-worktree-manage
 }
 
 function main(): void {
-  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch } = parseArguments()
+  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch, existingBranch } = parseArguments()
 
   if (help) {
     showHelp()
@@ -158,6 +168,7 @@ function main(): void {
       isFromWrapper={isFromWrapper}
       quickCreateName={quickCreateName}
       fromBranch={fromBranch}
+      existingBranch={existingBranch}
       prefixArg={prefixArg}
       clearPrefix={clearPrefix}
       originalCwd={ORIGINAL_CWD}

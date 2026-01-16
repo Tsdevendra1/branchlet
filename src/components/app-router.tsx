@@ -26,6 +26,7 @@ interface AppRouterProps {
   isFromWrapper: boolean
   quickCreateName?: string | undefined
   fromBranch?: string | undefined
+  existingBranch?: string | undefined
   prefixArg?: string | undefined
   clearPrefix?: boolean | undefined
   originalCwd?: string | undefined
@@ -44,6 +45,7 @@ export function AppRouter({
   isFromWrapper,
   quickCreateName,
   fromBranch,
+  existingBranch,
   prefixArg,
   clearPrefix,
   originalCwd,
@@ -79,6 +81,7 @@ export function AppRouter({
               isFromWrapper={isFromWrapper}
               quickCreateName={quickCreateName}
               fromBranch={fromBranch}
+              existingBranch={existingBranch}
               originalCwd={originalCwd}
               gitRoot={gitRoot}
               onPathSelect={(path) => {

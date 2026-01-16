@@ -27,6 +27,7 @@ interface CreateWorktreeProps {
   isFromWrapper?: boolean
   quickCreateName?: string | undefined
   fromBranch?: string | undefined
+  existingBranch?: string | undefined
   originalCwd?: string | undefined
   gitRoot?: string | undefined
   onPathSelect?: (path: string) => void
@@ -62,6 +63,7 @@ export function CreateWorktree({
   isFromWrapper = false,
   quickCreateName,
   fromBranch,
+  existingBranch,
   originalCwd,
   gitRoot: gitRootProp,
   onPathSelect,
@@ -248,6 +250,118 @@ export function CreateWorktree({
 
     triggerQuickCreate()
   }, [quickCreateName, fromBranch, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete, gitRootProp, originalCwd])
+
+  // Handle existing branch mode when existingBranch is provided
+  useEffect(() => {
+    // Don't run if quickCreateName is provided (it takes precedence)
+    if (quickCreateName || !existingBranch || branches.length === 0 || loading) {
+      return
+    }
+
+    // Check if the branch exists
+    const branch = branches.find((b) => b.name === existingBranch)
+    if (!branch) {
+      setState((prev) => ({
+        ...prev,
+        error: `Branch '${existingBranch}' not found`,
+      }))
+      return
+    }
+
+    // Derive directory name by sanitizing branch name (replace / with -)
+    const directoryName = existingBranch.replace(/\//g, "-")
+
+    // Validate the derived directory name
+    const dirError = validateDirectoryName(directoryName)
+    if (dirError) {
+      setState((prev) => ({
+        ...prev,
+        error: `Invalid derived directory name '${directoryName}': ${dirError}`,
+      }))
+      return
+    }
+
+    const config = worktreeService.getConfigService().getConfig()
+
+    // Set state for existing branch create and trigger creation
+    setState({
+      step: "directory",
+      directoryName,
+      sourceBranch: existingBranch,
+      newBranch: existingBranch, // Same as source - triggers existing branch path
+    })
+
+    // Trigger creation asynchronously
+    const triggerExistingBranchCreate = async () => {
+      try {
+        setState((prev) => ({ ...prev, step: "creating" }))
+
+        const gitRoot = repoPath || getRepositoryRoot()
+        const worktreePath = getWorktreePath(gitRoot, directoryName, config.worktreePathTemplate)
+        const parentDir = worktreePath.replace(`/${directoryName}`, "")
+
+        const gitService = worktreeService.getGitService()
+        await gitService.createWorktree({
+          name: directoryName,
+          sourceBranch: existingBranch,
+          newBranch: existingBranch, // Same as source - uses existing branch
+          basePath: parentDir,
+        })
+
+        if (config.worktreeCopyPatterns.length > 0) {
+          await copyFiles(gitRoot, worktreePath, config)
+        }
+
+        if (config.postCreateCmd.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            step: "running-commands",
+            commandProgress: { current: 0, total: config.postCreateCmd.length },
+            postCreateCommands: config.postCreateCmd,
+            currentCommandIndex: 0,
+          }))
+
+          const variables = {
+            BASE_PATH: gitRoot.split("/").pop() || "",
+            WORKTREE_PATH: worktreePath,
+            BRANCH_NAME: existingBranch,
+            SOURCE_BRANCH: existingBranch,
+          }
+
+          await executePostCreateCommands(config.postCreateCmd, variables, (command, current, total) => {
+            setState((prev) => ({
+              ...prev,
+              currentCommand: command,
+              commandProgress: { current, total },
+              currentCommandIndex: current - 1,
+            }))
+          })
+        }
+
+        if (config.terminalCommand) {
+          await openTerminal(config.terminalCommand, worktreePath)
+        }
+
+        setState((prev) => ({ ...prev, step: "success" }))
+
+        setTimeout(() => {
+          if (isFromWrapper && onPathSelect) {
+            onPathSelect(getTargetPath(worktreePath, gitRootProp || gitRoot, originalCwd))
+          } else {
+            onComplete()
+          }
+        }, 2000)
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : String(error),
+          step: "directory",
+        }))
+      }
+    }
+
+    triggerExistingBranchCreate()
+  }, [quickCreateName, existingBranch, branches, loading, worktreeService, repoPath, isFromWrapper, onPathSelect, onComplete, gitRootProp, originalCwd])
 
   useInput((input, key) => {
     if (state.error) {
