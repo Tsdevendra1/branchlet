@@ -47,6 +47,7 @@ Opens the main menu with all available options.
 branchlet create           # Go directly to worktree creation
 branchlet create feature-x # Quick create worktree with name 'feature-x'
 branchlet create feature-x --from main  # Create from specific branch
+branchlet -e feature/auth  # Create worktree for existing branch
 branchlet list             # List all worktrees
 branchlet delete           # Go directly to worktree deletion
 branchlet close            # Close current worktree and return to main repo
@@ -57,10 +58,11 @@ branchlet settings         # Open settings menu
 
 ### Options
 ```bash
-branchlet --help           # Show help information
-branchlet --version        # Show version number
-branchlet -m create        # Set initial mode
-branchlet --from <branch>  # Source branch to create worktree from (overrides config)
+branchlet --help              # Show help information
+branchlet --version           # Show version number
+branchlet -m create           # Set initial mode
+branchlet --from <branch>     # Source branch to create worktree from (overrides config)
+branchlet -e, --existing <branch>  # Create worktree for an existing branch
 ```
 
 ## Shell Integration
@@ -84,6 +86,7 @@ After shell integration, you can use these shortcuts:
 |-------|---------|-------------|
 | `bl` | `branchlet` | Open interactive menu |
 | `blc` | `branchlet create` | Create a new worktree |
+| `blc -e <branch>` | `branchlet -e <branch>` | Create worktree for existing branch |
 | `bll` | `branchlet list` | List and switch worktrees |
 | `blx` | `branchlet close` | Close current worktree |
 
@@ -92,6 +95,7 @@ After shell integration, you can use these shortcuts:
 bl                    # Open interactive menu
 blc                   # Create worktree interactively
 blc feature-auth      # Quick create worktree named 'feature-auth'
+blc -e feature/auth   # Create worktree for existing 'feature/auth' branch
 bll                   # List worktrees and switch to one
 blx                   # Close current worktree and return to main repo
 ```
