@@ -45,8 +45,16 @@ export class ConfigService {
       const localParsed = JSON.parse(localContent)
       const localValidation = validateConfig(localParsed)
       if (localValidation.success && localValidation.data) {
-        // Merge: local overrides global
-        this.config = { ...this.config, ...localValidation.data }
+        // Merge: local overrides global, but only for fields explicitly in local config
+        // This prevents Zod defaults from overwriting global settings
+        const mergedConfig = { ...this.config }
+        for (const key of Object.keys(localParsed)) {
+          if (key in localValidation.data) {
+            ;(mergedConfig as Record<string, unknown>)[key] =
+              (localValidation.data as Record<string, unknown>)[key]
+          }
+        }
+        this.config = mergedConfig as WorktreeConfig
         this.configPath = localPath
       }
     } catch {
