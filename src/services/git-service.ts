@@ -160,6 +160,17 @@ export class GitService {
     return branches
   }
 
+  async findRemoteBranch(branchName: string): Promise<string | null> {
+    const result = await executeGitCommand(
+      ["rev-parse", "--verify", `origin/${branchName}`],
+      this.gitRoot
+    )
+    if (result.success) {
+      return `origin/${branchName}`
+    }
+    return null
+  }
+
   async getRecentBranches(): Promise<string[]> {
     const result = await executeGitCommand(
       ["reflog", "--pretty=format:%gs", "--grep-reflog=checkout: moving from", "-n", "20"],

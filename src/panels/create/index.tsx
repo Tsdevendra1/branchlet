@@ -258,41 +258,51 @@ export function CreateWorktree({
       return
     }
 
-    // Check if the branch exists
-    const branch = branches.find((b) => b.name === existingBranch)
-    if (!branch) {
-      setState((prev) => ({
-        ...prev,
-        error: `Branch '${existingBranch}' not found`,
-      }))
-      return
-    }
-
-    // Derive directory name by sanitizing branch name (replace / with -)
-    const directoryName = existingBranch.replace(/\//g, "-")
-
-    // Validate the derived directory name
-    const dirError = validateDirectoryName(directoryName)
-    if (dirError) {
-      setState((prev) => ({
-        ...prev,
-        error: `Invalid derived directory name '${directoryName}': ${dirError}`,
-      }))
-      return
-    }
-
-    const config = worktreeService.getConfigService().getConfig()
-
-    // Set state for existing branch create and trigger creation
-    setState({
-      step: "directory",
-      directoryName,
-      sourceBranch: existingBranch,
-      newBranch: existingBranch, // Same as source - triggers existing branch path
-    })
-
     // Trigger creation asynchronously
     const triggerExistingBranchCreate = async () => {
+      const gitService = worktreeService.getGitService()
+
+      // Check if the branch exists locally first
+      let sourceBranch = existingBranch
+      const localBranch = branches.find((b) => b.name === existingBranch)
+
+      if (!localBranch) {
+        // Check if it exists as a remote branch
+        const remoteBranch = await gitService.findRemoteBranch(existingBranch)
+        if (remoteBranch) {
+          sourceBranch = remoteBranch
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: `Branch '${existingBranch}' not found`,
+          }))
+          return
+        }
+      }
+
+      // Derive directory name by sanitizing branch name (replace / with -)
+      const directoryName = existingBranch.replace(/\//g, "-")
+
+      // Validate the derived directory name
+      const dirError = validateDirectoryName(directoryName)
+      if (dirError) {
+        setState((prev) => ({
+          ...prev,
+          error: `Invalid derived directory name '${directoryName}': ${dirError}`,
+        }))
+        return
+      }
+
+      const config = worktreeService.getConfigService().getConfig()
+
+      // Set state for existing branch create and trigger creation
+      setState({
+        step: "directory",
+        directoryName,
+        sourceBranch,
+        newBranch: existingBranch, // Use original name for the new branch
+      })
+
       try {
         setState((prev) => ({ ...prev, step: "creating" }))
 
@@ -300,11 +310,10 @@ export function CreateWorktree({
         const worktreePath = getWorktreePath(gitRoot, directoryName, config.worktreePathTemplate)
         const parentDir = worktreePath.replace(`/${directoryName}`, "")
 
-        const gitService = worktreeService.getGitService()
         await gitService.createWorktree({
           name: directoryName,
-          sourceBranch: existingBranch,
-          newBranch: existingBranch, // Same as source - uses existing branch
+          sourceBranch,
+          newBranch: existingBranch, // Use original name for the new branch
           basePath: parentDir,
         })
 
@@ -325,7 +334,7 @@ export function CreateWorktree({
             BASE_PATH: gitRoot.split("/").pop() || "",
             WORKTREE_PATH: worktreePath,
             BRANCH_NAME: existingBranch,
-            SOURCE_BRANCH: existingBranch,
+            SOURCE_BRANCH: sourceBranch,
           }
 
           await executePostCreateCommands(config.postCreateCmd, variables, (command, current, total) => {
