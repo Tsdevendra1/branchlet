@@ -76,9 +76,12 @@ export interface DeleteWorktreeState {
 }
 
 export interface CloseWorktreeState {
-  step: "checking" | "confirm" | "closing" | "error"
+  step: "checking" | "confirm" | "running-close-commands" | "closing" | "error"
   currentWorktreePath?: string
   mainRepoPath?: string
   branchName?: string
   error?: string
+  postCloseCommands?: string[]
+  currentCommandIndex?: number
+  commandProgress?: { current: number; total: number }
 }

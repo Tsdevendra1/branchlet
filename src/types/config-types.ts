@@ -11,4 +11,5 @@ export interface TemplateVariables {
   WORKTREE_PATH: string
   BRANCH_NAME: string
   SOURCE_BRANCH: string
+  MAIN_REPO_PATH?: string
 }

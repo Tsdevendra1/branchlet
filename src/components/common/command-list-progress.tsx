@@ -12,6 +12,7 @@ interface CommandListProgressProps {
   currentIndex: number
   completedCommands?: string[]
   failedCommands?: string[]
+  title?: string
 }
 
 export function CommandListProgress({
@@ -19,6 +20,7 @@ export function CommandListProgress({
   currentIndex,
   completedCommands = [],
   failedCommands = [],
+  title = "Running post-create commands",
 }: CommandListProgressProps) {
   const getCommandStatus = (index: number): CommandStatus["status"] => {
     const command = commands[index]
@@ -47,7 +49,7 @@ export function CommandListProgress({
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text color={COLORS.INFO}>
-          Running post-create commands ({currentIndex}/{commands.length})
+          {title} ({currentIndex}/{commands.length})
         </Text>
       </Box>
 

@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs"
-import { join, relative } from "node:path"
+import { basename, join, relative } from "node:path"
 import { Box, Text, useInput } from "ink"
 import { useCallback, useEffect, useState } from "react"
-import { ConfirmDialog, StatusIndicator } from "../../components/common/index.js"
+import { CommandListProgress, ConfirmDialog, StatusIndicator } from "../../components/common/index.js"
 import { COLORS, MESSAGES } from "../../constants/index.js"
+import { executePostCreateCommands } from "../../services/file-service.js"
 import type { WorktreeService } from "../../services/index.js"
-import type { CloseWorktreeState } from "../../types/index.js"
+import type { CloseWorktreeState, TemplateVariables } from "../../types/index.js"
 
 interface CloseWorktreeProps {
   worktreeService: WorktreeService
@@ -74,7 +75,50 @@ export function CloseWorktree({
         return
       }
 
-      // Skip confirmation and proceed directly to closing
+      const targetPath = getTargetPath(info.mainRepoPath, info.worktreePath, originalCwd)
+
+      // Check for post-close commands
+      if (config.postCloseCmd && config.postCloseCmd.length > 0) {
+        const commandState: CloseWorktreeState = {
+          step: "running-close-commands",
+          currentWorktreePath: info.worktreePath,
+          mainRepoPath: info.mainRepoPath,
+          postCloseCommands: config.postCloseCmd,
+          currentCommandIndex: 0,
+          commandProgress: { current: 0, total: config.postCloseCmd.length },
+        }
+        if (info.branch) {
+          commandState.branchName = info.branch
+        }
+        setState(commandState)
+
+        const variables: TemplateVariables = {
+          BASE_PATH: basename(info.mainRepoPath),
+          WORKTREE_PATH: info.worktreePath,
+          BRANCH_NAME: info.branch || "",
+          SOURCE_BRANCH: "",
+          MAIN_REPO_PATH: info.mainRepoPath,
+        }
+
+        await executePostCreateCommands(
+          config.postCloseCmd,
+          variables,
+          (_command, current, total) => {
+            setState((prev) => ({
+              ...prev,
+              currentCommandIndex: current - 1,
+              commandProgress: { current, total },
+            }))
+          }
+        )
+
+        // Commands finished, proceed to close
+        setState((prev) => ({ ...prev, step: "closing" }))
+        onCloseComplete(targetPath, info.worktreePath)
+        return
+      }
+
+      // No post-close commands, proceed directly to closing
       const newState: CloseWorktreeState = {
         step: "closing",
         currentWorktreePath: info.worktreePath,
@@ -84,7 +128,6 @@ export function CloseWorktree({
         newState.branchName = info.branch
       }
       setState(newState)
-      const targetPath = getTargetPath(info.mainRepoPath, info.worktreePath, originalCwd)
       onCloseComplete(targetPath, info.worktreePath)
     } catch (error) {
       setState({
@@ -92,7 +135,7 @@ export function CloseWorktree({
         error: error instanceof Error ? error.message : String(error),
       })
     }
-  }, [worktreeService, isFromWrapper, originalCwd, onCloseComplete])
+  }, [worktreeService, isFromWrapper, originalCwd, onCloseComplete, config])
 
   useEffect(() => {
     checkCurrentWorktree()
@@ -139,6 +182,16 @@ export function CloseWorktree({
           <Text color={COLORS.MUTED}>Press any key to exit...</Text>
         </Box>
       </Box>
+    )
+  }
+
+  if (state.step === "running-close-commands") {
+    return (
+      <CommandListProgress
+        commands={state.postCloseCommands || []}
+        currentIndex={state.currentCommandIndex || 0}
+        title="Running post-close commands"
+      />
     )
   }
 

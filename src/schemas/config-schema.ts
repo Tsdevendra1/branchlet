@@ -22,6 +22,12 @@ export const WorktreeConfigSchema = z
       .describe(
         "Commands to run after creating a worktree. Variables: $BASE_PATH, $WORKTREE_PATH, $BRANCH_NAME, $SOURCE_BRANCH"
       ),
+    postCloseCmd: z
+      .array(z.string())
+      .default([])
+      .describe(
+        "Commands to run before closing a worktree. Variables: $BASE_PATH, $WORKTREE_PATH, $BRANCH_NAME, $MAIN_REPO_PATH"
+      ),
     terminalCommand: z
       .string()
       .default("")
