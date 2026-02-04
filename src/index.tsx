@@ -150,9 +150,11 @@ function main(): void {
     try {
       const fs = require("node:fs")
       const tty = require("node:tty")
-      const ttyFd = fs.openSync("/dev/tty", "r+")
-      inkStdin = new tty.ReadStream(ttyFd) as unknown as NodeJS.ReadStream
-      inkStdout = new tty.WriteStream(ttyFd) as unknown as NodeJS.WriteStream
+      // Open separate file descriptors for read and write (required for Node.js v22+)
+      const ttyReadFd = fs.openSync("/dev/tty", "r")
+      const ttyWriteFd = fs.openSync("/dev/tty", "w")
+      inkStdin = new tty.ReadStream(ttyReadFd) as unknown as NodeJS.ReadStream
+      inkStdout = new tty.WriteStream(ttyWriteFd) as unknown as NodeJS.WriteStream
 
       Object.defineProperty(inkStdout, "isTTY", { value: true })
       Object.defineProperty(inkStdout, "hasColors", { value: () => true })
