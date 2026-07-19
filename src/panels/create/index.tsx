@@ -14,6 +14,7 @@ import { copyFiles, executePostCreateCommands, openTerminal } from "../../servic
 import type { WorktreeService } from "../../services/index.js"
 import type { CreateWorktreeState, GitBranch, SelectOption } from "../../types/index.js"
 import {
+  getCurrentBranch,
   getRepositoryRoot,
   getWorktreePath,
   validateBranchName,
@@ -83,7 +84,14 @@ export function CreateWorktree({
       setLoading(true)
       const gitService = worktreeService.getGitService()
       const repoInfo = await gitService.getRepositoryInfo()
-      setBranches(repoInfo.branches)
+      const currentBranch =
+        (originalCwd && (await getCurrentBranch(originalCwd))) || repoInfo.currentBranch
+      setBranches(
+        repoInfo.branches.map((branch) => ({
+          ...branch,
+          isCurrent: branch.name === currentBranch,
+        }))
+      )
       setRepoPath(repoInfo.path)
     } catch (error) {
       setState((prev) => ({
@@ -93,7 +101,7 @@ export function CreateWorktree({
     } finally {
       setLoading(false)
     }
-  }, [worktreeService])
+  }, [worktreeService, originalCwd])
 
   useEffect(() => {
     loadBranches()
@@ -185,7 +193,13 @@ export function CreateWorktree({
         setState((prev) => ({ ...prev, step: "creating" }))
 
         const gitRoot = repoPath || getRepositoryRoot()
-        const worktreePath = getWorktreePath(gitRoot, quickCreateName, config.worktreePathTemplate)
+        const worktreePath = getWorktreePath(
+          gitRoot,
+          quickCreateName,
+          config.worktreePathTemplate,
+          prefixedBranchName,
+          sourceBranch.name
+        )
         const parentDir = worktreePath.replace(`/${quickCreateName}`, "")
 
         const gitService = worktreeService.getGitService()
@@ -197,7 +211,11 @@ export function CreateWorktree({
         })
 
         if (config.worktreeCopyPatterns.length > 0) {
-          await copyFiles(gitRoot, worktreePath, config)
+          const { dir: envSource } = await gitService.resolveEnvSource(
+            sourceBranch.name,
+            originalCwd || gitRoot
+          )
+          await copyFiles(envSource, worktreePath, config)
         }
 
         if (config.postCreateCmd.length > 0) {
@@ -307,7 +325,13 @@ export function CreateWorktree({
         setState((prev) => ({ ...prev, step: "creating" }))
 
         const gitRoot = repoPath || getRepositoryRoot()
-        const worktreePath = getWorktreePath(gitRoot, directoryName, config.worktreePathTemplate)
+        const worktreePath = getWorktreePath(
+          gitRoot,
+          directoryName,
+          config.worktreePathTemplate,
+          existingBranch,
+          sourceBranch
+        )
         const parentDir = worktreePath.replace(`/${directoryName}`, "")
 
         await gitService.createWorktree({
@@ -318,7 +342,11 @@ export function CreateWorktree({
         })
 
         if (config.worktreeCopyPatterns.length > 0) {
-          await copyFiles(gitRoot, worktreePath, config)
+          const { dir: envSource } = await gitService.resolveEnvSource(
+            sourceBranch,
+            originalCwd || gitRoot
+          )
+          await copyFiles(envSource, worktreePath, config)
         }
 
         if (config.postCreateCmd.length > 0) {
@@ -449,7 +477,9 @@ export function CreateWorktree({
       const worktreePath = getWorktreePath(
         gitRoot,
         state.directoryName,
-        config.worktreePathTemplate
+        config.worktreePathTemplate,
+        state.newBranch,
+        state.sourceBranch
       )
       const parentDir = worktreePath.replace(`/${state.directoryName}`, "")
 
@@ -462,7 +492,11 @@ export function CreateWorktree({
       })
 
       if (config.worktreeCopyPatterns.length > 0) {
-        await copyFiles(gitRoot, worktreePath, config)
+        const { dir: envSource } = await gitService.resolveEnvSource(
+          state.sourceBranch,
+          originalCwd || gitRoot
+        )
+        await copyFiles(envSource, worktreePath, config)
       }
 
       if (config.postCreateCmd.length > 0) {
