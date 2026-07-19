@@ -4,15 +4,16 @@ import minimist from "minimist"
 import packageJson from "../package.json" with { type: "json" }
 import { App } from "./components/app.js"
 import { MESSAGES } from "./constants/index.js"
+import { headlessCreate, headlessDelete, headlessList } from "./headless.js"
 import type { AppMode } from "./types/index.js"
 
 const VERSION = packageJson.version
 const ORIGINAL_CWD = process.cwd()
 
-function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; quickCreateName?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean; fromBranch?: string | undefined; existingBranch?: string | undefined } {
+function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolean; headless: boolean; force: boolean; json: boolean; quickCreateName?: string | undefined; deleteTarget?: string | undefined; prefixArg?: string | undefined; clearPrefix?: boolean; fromBranch?: string | undefined; existingBranch?: string | undefined } {
   const argv = minimist(process.argv.slice(2), {
     string: ["mode", "from", "existing"],
-    boolean: ["help", "version", "from-wrapper", "clear"],
+    boolean: ["help", "version", "from-wrapper", "clear", "headless", "force", "json"],
     alias: {
       h: "help",
       v: "version",
@@ -22,7 +23,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
   })
 
   if (argv.help) {
-    return { mode: "menu", help: true, isFromWrapper: false }
+    return { mode: "menu", help: true, isFromWrapper: false, headless: false, force: false, json: false }
   }
 
   if (argv.version) {
@@ -33,6 +34,7 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
   const validModes: AppMode[] = ["menu", "create", "list", "delete", "settings", "close", "prefix"]
   let mode: AppMode = "menu"
   let quickCreateName: string | undefined
+  let deleteTarget: string | undefined
   let prefixArg: string | undefined
   let clearPrefix: boolean = false
   const fromBranch: string | undefined = argv.from ? String(argv.from) : undefined
@@ -58,6 +60,11 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
       quickCreateName = String(argv._[1])
     }
 
+    // If mode is "delete" and there's a second positional arg, use it as the delete target
+    if (mode === "delete" && argv._.length > 1) {
+      deleteTarget = String(argv._[1])
+    }
+
     // If mode is "prefix" and there's a second positional arg, use it as prefix value
     if (mode === "prefix" && argv._.length > 1) {
       prefixArg = String(argv._[1])
@@ -70,8 +77,11 @@ function parseArguments(): { mode: AppMode; help: boolean; isFromWrapper: boolea
   }
 
   const isFromWrapper = argv["from-wrapper"] === true
+  const headless = argv.headless === true
+  const force = argv.force === true
+  const json = argv.json === true
 
-  return { mode, help: false, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch, existingBranch }
+  return { mode, help: false, isFromWrapper, headless, force, json, quickCreateName, deleteTarget, prefixArg, clearPrefix, fromBranch, existingBranch }
 }
 
 function showHelp(): void {
@@ -84,7 +94,7 @@ Usage:
 Commands:
   create [name]  Create a new worktree (interactive if no name given)
   list           List all worktrees
-  delete         Delete a worktree
+  delete [name]  Delete a worktree (by branch name or path in headless mode)
   close          Close current worktree and return to main repo
   prefix [name]  Set branch prefix (e.g., 'john' creates 'john/' prefix)
   settings       Manage configuration
@@ -97,6 +107,10 @@ Options:
   --from <branch>        Source branch to create worktree from (overrides config)
   -e, --existing <branch>  Create worktree for an existing branch
   --from-wrapper         Called from shell wrapper (outputs path to stdout)
+  --headless             Run without the interactive UI (auto-enabled when stdin
+                         is not a TTY). Supports create/delete/list.
+  --force                With headless delete: delete even with uncommitted changes
+  --json                 With headless list: output JSON
 
 Examples:
   branchlet                    # Start interactive menu
@@ -131,12 +145,35 @@ For more information, visit: https://github.com/raghavpillai/git-worktree-manage
 `)
 }
 
-function main(): void {
-  const { mode, help, isFromWrapper, quickCreateName, prefixArg, clearPrefix, fromBranch, existingBranch } = parseArguments()
+async function main(): Promise<void> {
+  const { mode, help, isFromWrapper, headless, force, json, quickCreateName, deleteTarget, prefixArg, clearPrefix, fromBranch, existingBranch } = parseArguments()
 
   if (help) {
     showHelp()
     process.exit(0)
+  }
+
+  // Headless mode: explicit --headless, or no TTY (e.g. invoked by an agent or in a
+  // pipe, where Ink's raw mode would crash). --from-wrapper opens /dev/tty itself.
+  if (headless || (!process.stdin.isTTY && !isFromWrapper)) {
+    try {
+      if (mode === "create" && (quickCreateName || existingBranch)) {
+        await headlessCreate({ name: quickCreateName, fromBranch, existingBranch })
+      } else if (mode === "delete" && deleteTarget) {
+        await headlessDelete(deleteTarget, force)
+      } else if (mode === "list") {
+        await headlessList(json)
+      } else {
+        console.error(
+          "Headless mode supports: create <name> [--from <branch>] | create -e <branch> | delete <name-or-path> [--force] | list [--json]"
+        )
+        process.exit(1)
+      }
+      process.exit(0)
+    } catch (error) {
+      console.error(`Error: ${error instanceof Error ? error.message : String(error)}`)
+      process.exit(1)
+    }
   }
 
   let hasExited = false
@@ -206,4 +243,4 @@ function main(): void {
   })
 }
 
-main()
+void main()

@@ -295,6 +295,25 @@ export class GitService {
     }
   }
 
+  // Where to copy gitignored files (e.g. .env) from: the source branch's checked-out worktree if it has
+  // one, otherwise the folder branchlet was invoked from — a gitignored file only exists in a live checkout.
+  async resolveEnvSource(
+    sourceBranch: string,
+    invocationDir: string
+  ): Promise<{ dir: string; fromSourceBranch: boolean }> {
+    const worktrees = await this.listWorktrees()
+    const sourceWorktree = worktrees.find((wt) => wt.branch === sourceBranch)
+    if (sourceWorktree?.path) {
+      return { dir: sourceWorktree.path, fromSourceBranch: true }
+    }
+
+    const toplevel = await executeGitCommand(["rev-parse", "--show-toplevel"], invocationDir)
+    return {
+      dir: toplevel.success ? toplevel.stdout : invocationDir,
+      fromSourceBranch: false,
+    }
+  }
+
   async branchExists(branchName: string): Promise<boolean> {
     const result = await executeGitCommand(
       ["show-ref", "--verify", `refs/heads/${branchName}`],
