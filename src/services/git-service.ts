@@ -297,6 +297,7 @@ export class GitService {
 
   // Where to copy gitignored files (e.g. .env) from: the source branch's checked-out worktree if it has
   // one, otherwise the folder branchlet was invoked from — a gitignored file only exists in a live checkout.
+  // Call it before creating the new worktree: one made for an existing branch would match itself.
   async resolveEnvSource(
     sourceBranch: string,
     invocationDir: string

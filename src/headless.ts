@@ -118,6 +118,10 @@ export async function headlessCreate(options: HeadlessCreateOptions): Promise<vo
     fail(`Worktree already exists at '${worktreePath}'`)
   }
 
+  const { dir: envSource, fromSourceBranch } = await gitService.resolveEnvSource(
+    sourceBranch,
+    invocationDir
+  )
   console.error(
     `Creating worktree '${directoryName}' from '${sourceBranch}' (branch: ${newBranch})`
   )
@@ -129,10 +133,6 @@ export async function headlessCreate(options: HeadlessCreateOptions): Promise<vo
   })
 
   if (config.worktreeCopyPatterns.length > 0) {
-    const { dir: envSource, fromSourceBranch } = await gitService.resolveEnvSource(
-      sourceBranch,
-      invocationDir
-    )
     const copyResult = await copyFiles(envSource, worktreePath, config)
     console.error(`Copied ${copyResult.copied.length} file(s) from ${envSource}`)
     if (!fromSourceBranch) {

@@ -203,6 +203,10 @@ export function CreateWorktree({
         const parentDir = worktreePath.replace(`/${quickCreateName}`, "")
 
         const gitService = worktreeService.getGitService()
+        const { dir: envSource } = await gitService.resolveEnvSource(
+          sourceBranch.name,
+          originalCwd || gitRoot
+        )
         await gitService.createWorktree({
           name: quickCreateName,
           sourceBranch: sourceBranch.name,
@@ -211,10 +215,6 @@ export function CreateWorktree({
         })
 
         if (config.worktreeCopyPatterns.length > 0) {
-          const { dir: envSource } = await gitService.resolveEnvSource(
-            sourceBranch.name,
-            originalCwd || gitRoot
-          )
           await copyFiles(envSource, worktreePath, config)
         }
 
@@ -334,6 +334,10 @@ export function CreateWorktree({
         )
         const parentDir = worktreePath.replace(`/${directoryName}`, "")
 
+        const { dir: envSource } = await gitService.resolveEnvSource(
+          sourceBranch,
+          originalCwd || gitRoot
+        )
         await gitService.createWorktree({
           name: directoryName,
           sourceBranch,
@@ -342,10 +346,6 @@ export function CreateWorktree({
         })
 
         if (config.worktreeCopyPatterns.length > 0) {
-          const { dir: envSource } = await gitService.resolveEnvSource(
-            sourceBranch,
-            originalCwd || gitRoot
-          )
           await copyFiles(envSource, worktreePath, config)
         }
 
@@ -484,6 +484,10 @@ export function CreateWorktree({
       const parentDir = worktreePath.replace(`/${state.directoryName}`, "")
 
       const gitService = worktreeService.getGitService()
+      const { dir: envSource } = await gitService.resolveEnvSource(
+        state.sourceBranch,
+        originalCwd || gitRoot
+      )
       await gitService.createWorktree({
         name: state.directoryName,
         sourceBranch: state.sourceBranch,
@@ -492,10 +496,6 @@ export function CreateWorktree({
       })
 
       if (config.worktreeCopyPatterns.length > 0) {
-        const { dir: envSource } = await gitService.resolveEnvSource(
-          state.sourceBranch,
-          originalCwd || gitRoot
-        )
         await copyFiles(envSource, worktreePath, config)
       }
 
