@@ -203,13 +203,17 @@ export class GitService {
     const worktreePath = `${basePath}/${name}`
 
     const args = ["worktree", "add"]
+    let startPoint = sourceBranch
 
     if (newBranch !== sourceBranch) {
-      await this.fastForwardFromOrigin(sourceBranch)
+      // Git won't fast-forward a branch checked out elsewhere, so this may swap in origin's copy,
+      // which the new branch would otherwise track.
+      startPoint = await this.latestStartPoint(sourceBranch)
+      if (startPoint !== sourceBranch) args.push("--no-track")
       args.push("-b", newBranch)
     }
 
-    args.push(worktreePath, sourceBranch)
+    args.push(worktreePath, startPoint)
 
     const result = await executeGitCommand(args, this.gitRoot)
 
@@ -218,11 +222,15 @@ export class GitService {
     }
   }
 
-  // Fails when offline, or when the branch is checked out somewhere or has commits origin lacks;
-  // the worktree then starts from the local branch as it is.
-  private async fastForwardFromOrigin(branch: string): Promise<void> {
-    if (!(await this.branchExists(branch))) return
-    await executeGitCommand(["fetch", "origin", `${branch}:${branch}`], this.gitRoot)
+  private async latestStartPoint(branch: string): Promise<string> {
+    if (!(await this.branchExists(branch))) return branch
+    await executeGitCommand(["fetch", "origin", branch], this.gitRoot)
+    const remote = `origin/${branch}`
+    const originContainsLocal = await executeGitCommand(
+      ["merge-base", "--is-ancestor", branch, remote],
+      this.gitRoot
+    )
+    return originContainsLocal.success ? remote : branch
   }
 
   async deleteWorktree(options: WorktreeDeleteOptions): Promise<void> {

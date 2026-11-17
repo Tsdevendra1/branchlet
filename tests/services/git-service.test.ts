@@ -171,7 +171,41 @@ describe("GitService", () => {
       try {
         const options = { name: "wt", sourceBranch: "main", newBranch: "feature", basePath: dir }
         await new GitService(repo).createWorktree(options)
+        const wt = join(dir, "wt")
+        expect(await git(wt, "rev-parse", "HEAD")).toBe(originMain)
+        const upstream = await executeGitCommand(["rev-parse", "--abbrev-ref", "@{upstream}"], wt)
+        expect(upstream.success).toBe(false)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("starts from origin's latest commit while the local branch is checked out", async () => {
+      const { dir, repo, originMain } = await repoWithMainBehindOrigin()
+      try {
+        await git(repo, "switch", "-q", "main")
+        const options = { name: "wt", sourceBranch: "main", newBranch: "feature", basePath: dir }
+        await new GitService(repo).createWorktree(options)
         expect(await git(join(dir, "wt"), "rev-parse", "HEAD")).toBe(originMain)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("keeps tracking origin when the source is origin's copy of a branch", async () => {
+      const { dir, repo } = await repoWithMainBehindOrigin()
+      try {
+        await git(join(dir, "other"), "push", "-q", "origin", "main:feature")
+        await git(repo, "fetch", "-q", "origin")
+        const options = {
+          name: "wt",
+          sourceBranch: "origin/feature",
+          newBranch: "feature",
+          basePath: dir,
+        }
+        await new GitService(repo).createWorktree(options)
+        const upstream = await git(join(dir, "wt"), "rev-parse", "--abbrev-ref", "@{upstream}")
+        expect(upstream).toBe("origin/feature")
       } finally {
         rmSync(dir, { recursive: true, force: true })
       }
