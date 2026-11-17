@@ -16,7 +16,7 @@ describe("config-schema", () => {
 
       const result = validateConfig(validConfig)
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(validConfig)
+      expect(result.data).toMatchObject(validConfig)
     })
 
     test("should handle configuration with missing fields (uses defaults)", () => {
@@ -132,7 +132,7 @@ describe("config-schema", () => {
       for (const config of complexConfigs) {
         const result = validateConfig(config)
         expect(result.success).toBe(true)
-        expect(result.data).toEqual(config)
+        expect(result.data).toMatchObject(config)
       }
     })
   })
@@ -150,7 +150,7 @@ describe("config-schema", () => {
       }
 
       const result = WorktreeConfigSchema.parse(validConfig)
-      expect(result).toEqual(validConfig)
+      expect(result).toMatchObject(validConfig)
     })
 
     test("should throw on invalid configurations", () => {

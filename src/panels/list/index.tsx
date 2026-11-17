@@ -332,7 +332,6 @@ export function ListWorktrees({
 
   // Batch deleting progress screen
   if (navigationMode === "batch-deleting") {
-    const total = selectedForDeletion.size
     const deletingWorktree = worktrees.find((wt) => wt.path === currentlyDeleting)
     const branchName = deletingWorktree?.branch || ""
     return (
