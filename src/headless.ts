@@ -165,7 +165,8 @@ export async function headlessCreate(options: HeadlessCreateOptions): Promise<vo
 }
 
 export async function headlessDelete(target: string, force: boolean): Promise<void> {
-  const gitRoot = getRepositoryRoot()
+  const invocationDir = getRepositoryRoot()
+  const gitRoot = (await getGitRoot(invocationDir)) ?? invocationDir
   const worktreeService = new WorktreeService(gitRoot)
   await worktreeService.initialize()
   const gitService = worktreeService.getGitService()
