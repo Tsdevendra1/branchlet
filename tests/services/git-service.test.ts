@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { GitService } from "../../src/services/git-service.js"
+import { executeGitCommand } from "../../src/utils/git-commands.js"
 
 describe("GitService", () => {
   const gitService = new GitService()
@@ -139,6 +143,55 @@ describe("GitService", () => {
   })
 
   describe("createWorktree", () => {
+    async function git(cwd: string, ...args: string[]): Promise<string> {
+      const identity = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+      const result = await executeGitCommand([...identity, ...args], cwd)
+      if (!result.success) throw new Error(result.stderr)
+      return result.stdout.trim()
+    }
+
+    async function repoWithMainBehindOrigin() {
+      const dir = mkdtempSync(join(tmpdir(), "branchlet-"))
+      const repo = join(dir, "repo")
+      const other = join(dir, "other")
+      await git(dir, "init", "-q", "--bare", "origin.git")
+      await git(dir, "clone", "-q", "origin.git", "repo")
+      await git(repo, "commit", "-q", "--allow-empty", "-m", "first")
+      await git(repo, "branch", "-M", "main")
+      await git(repo, "push", "-q", "-u", "origin", "main")
+      await git(dir, "clone", "-q", "-b", "main", "origin.git", "other")
+      await git(other, "commit", "-q", "--allow-empty", "-m", "second")
+      await git(other, "push", "-q", "origin", "main")
+      await git(repo, "switch", "-q", "-c", "work")
+      return { dir, repo, originMain: await git(other, "rev-parse", "HEAD") }
+    }
+
+    test("starts a new branch from origin's latest commit when the local branch is behind", async () => {
+      const { dir, repo, originMain } = await repoWithMainBehindOrigin()
+      try {
+        const options = { name: "wt", sourceBranch: "main", newBranch: "feature", basePath: dir }
+        await new GitService(repo).createWorktree(options)
+        expect(await git(join(dir, "wt"), "rev-parse", "HEAD")).toBe(originMain)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("keeps the local branch's commits that origin lacks", async () => {
+      const { dir, repo } = await repoWithMainBehindOrigin()
+      try {
+        await git(repo, "switch", "-q", "main")
+        await git(repo, "commit", "-q", "--allow-empty", "-m", "local only")
+        const localMain = await git(repo, "rev-parse", "HEAD")
+        await git(repo, "switch", "-q", "work")
+        const options = { name: "wt", sourceBranch: "main", newBranch: "feature", basePath: dir }
+        await new GitService(repo).createWorktree(options)
+        expect(await git(join(dir, "wt"), "rev-parse", "HEAD")).toBe(localMain)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
     test("should handle invalid options gracefully", async () => {
       const invalidOptions = {
         name: "",

@@ -205,6 +205,7 @@ export class GitService {
     const args = ["worktree", "add"]
 
     if (newBranch !== sourceBranch) {
+      await this.fastForwardFromOrigin(sourceBranch)
       args.push("-b", newBranch)
     }
 
@@ -215,6 +216,13 @@ export class GitService {
     if (!result.success) {
       throw handleGitError(result.stderr, "create worktree")
     }
+  }
+
+  // Fails when offline, or when the branch is checked out somewhere or has commits origin lacks;
+  // the worktree then starts from the local branch as it is.
+  private async fastForwardFromOrigin(branch: string): Promise<void> {
+    if (!(await this.branchExists(branch))) return
+    await executeGitCommand(["fetch", "origin", `${branch}:${branch}`], this.gitRoot)
   }
 
   async deleteWorktree(options: WorktreeDeleteOptions): Promise<void> {
